@@ -1,42 +1,20 @@
-package util
+package wrapper
 
 import (
+	"arcaflow-engine-deployer-podman/util"
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"os/exec"
 	"strings"
 )
-
-// SupportedPlatforms from: https://github.com/docker-library/official-images#architectures-other-than-amd64
-func SupportedPlatforms() []string {
-	return []string{
-		"arm32v6",
-		"arm32v7",
-		"arm64v8",
-		"amd64",
-		"arm64",
-		"linux/arm64",
-		"winamd64",
-		"arm32v5",
-		"ppc64le",
-		"s390x",
-		"mips64le",
-		"riscv64",
-		"i386",
-	}
-}
 
 type podman struct {
 	PodmanFullPath string
 }
 
-type Podman interface {
-	ImageExists(image string) (*bool, error)
-	PullImage(image string, platform *string) error
-}
-
-func NewPodman(fullPath string) Podman {
+func NewPodmanWrapper(fullPath string) PodmanWrapper {
 	return &podman{
 		PodmanFullPath: fullPath,
 	}
@@ -60,16 +38,13 @@ func (p *podman) ImageExists(image string) (*bool, error) {
 	}
 	outStr := out.String()
 	outSlice := strings.Split(outStr, "\n")
-	exists := SliceContains(outSlice, image)
+	exists := util.SliceContains(outSlice, image)
 	return &exists, nil
 }
 
 func (p *podman) PullImage(image string, platform *string) error {
 	commandArgs := []string{"pull"}
 	if platform != nil {
-		if SliceContains(SupportedPlatforms(), *platform) == false {
-			return errors.New(fmt.Sprintf("Unsupported platform: %s", *platform))
-		}
 		commandArgs = append(commandArgs, []string{"--platform", *platform}...)
 	}
 	image = p.decorateImageName(image)
@@ -81,4 +56,25 @@ func (p *podman) PullImage(image string, platform *string) error {
 		return errors.New(out.String())
 	}
 	return nil
+}
+
+func (p *podman) Deploy(image string) (io.WriteCloser, io.ReadCloser, *exec.Cmd, error) {
+	image = p.decorateImageName(image)
+	commandArgs := []string{"run", "-i", "-a", "stdin", "-a", "stdout", "-a", "stderr", image}
+	cmd := exec.Command(p.PodmanFullPath, commandArgs...)
+
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	if err := cmd.Start(); err != nil {
+		return nil, nil, nil, errors.New(err.Error())
+	}
+	return stdin, stdout, cmd, nil
 }

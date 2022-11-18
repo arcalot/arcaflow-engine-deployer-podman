@@ -1,27 +1,34 @@
 package podman
 
 import (
-	"arcaflow-engine-deployer-podman/util"
+	"arcaflow-engine-deployer-podman/wrapper"
 	"context"
 	"go.arcalot.io/log"
 	"go.flow.arcalot.io/deployer"
-	"os/exec"
 	"regexp"
 	"strings"
+	"sync"
 )
 
 type Connector struct {
 	config *Config
 	logger log.Logger
-	podman util.Podman
+	podman wrapper.PodmanWrapper
 }
 
 var tagRegexp = regexp.MustCompile("^[a-zA-Z0-9.-]$")
 
-func (c *Connector) Deploy(ctx context.Context, image string) (deployer.Plugin, error) {
+func (c Connector) Deploy(ctx context.Context, image string) (deployer.Plugin, error) {
 	if err := c.pullImage(ctx, image); err != nil {
 		return nil, err
 	}
+	podmanWrapper := wrapper.NewPodmanWrapper(c.config.Podman.Path)
+	podmanConnector := PodmanConnector{
+		ContainerOut: []byte{},
+		Wrapper:      podmanWrapper,
+		Lock:         &sync.Mutex{},
+	}
+	return &podmanConnector, nil
 }
 
 func (c *Connector) pullImage(ctx context.Context, image string) error {
@@ -29,9 +36,6 @@ func (c *Connector) pullImage(ctx context.Context, image string) error {
 		return nil
 	}
 	if c.config.Deployment.ImagePullPolicy == ImagePullPolicyIfNotPresent {
-
-		exec.Command(c.config.Podman.Path, "image", "ls", "--format", "{{.Repository}}:{{.Tag}}")
-
 		imageExists, err := c.podman.ImageExists(image)
 		if err != nil {
 			return err
@@ -43,4 +47,5 @@ func (c *Connector) pullImage(ctx context.Context, image string) error {
 			return nil
 		}
 	}
+	return nil
 }

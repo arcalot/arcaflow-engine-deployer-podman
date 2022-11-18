@@ -45,7 +45,7 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 		"Podman",
 		map[string]*schema.PropertySchema{
 			"path": schema.NewPropertySchema(
-				schema.NewRefSchema("Path", nil),
+				schema.NewStringSchema(nil, nil, regexp.MustCompile("^.*$")),
 				schema.NewDisplayValue(schema.PointerTo("Podman path"), schema.PointerTo("Provides the path of podman executable"), nil),
 				false,
 				nil,
