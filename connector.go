@@ -6,7 +6,6 @@ import (
 	"go.arcalot.io/log"
 	"go.flow.arcalot.io/deployer"
 	"regexp"
-	"strings"
 	"sync"
 )
 
@@ -22,12 +21,12 @@ func (c Connector) Deploy(ctx context.Context, image string) (deployer.Plugin, e
 	if err := c.pullImage(ctx, image); err != nil {
 		return nil, err
 	}
-	//TODO FIX IT
+
 	podmanWrapper := wrapper.NewPodmanWrapper("/usr/bin/podman")
-	podmanConnector := PodmanConnector{
-		Wrapper: podmanWrapper,
-		Lock:    &sync.Mutex{},
-		Image:   image,
+	podmanConnector := Cli{
+		wrapper:        podmanWrapper,
+		lock:           &sync.Mutex{},
+		containerImage: image,
 	}
 	return &podmanConnector, nil
 }
@@ -42,10 +41,15 @@ func (c *Connector) pullImage(ctx context.Context, image string) error {
 			return err
 		}
 
-		parts := strings.Split(image, ":")
-		tag := parts[len(parts)-1]
-		if len(parts) > 1 && tagRegexp.MatchString(tag) && tag != "latest" && *imageExists {
+		if *imageExists {
+			c.logger.Debugf("%s: image already present skipping pull", image)
 			return nil
+		}
+		//TODO:fix default values in configuration
+		_amd64 := "amd64"
+		c.logger.Debugf("Pulling image: %s", image)
+		if err := c.podman.PullImage(image, &_amd64); err != nil {
+			return err
 		}
 	}
 	return nil

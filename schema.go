@@ -44,6 +44,20 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 				nil,
 				nil,
 			),
+			"podman": schema.NewPropertySchema(
+				schema.NewRefSchema("Podman", nil),
+				schema.NewDisplayValue(
+					schema.PointerTo("Podman"),
+					schema.PointerTo("Podman CLI configuration"),
+					nil,
+				),
+				false,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+			),
 		},
 	),
 	schema.NewStructMappedObjectSchema[Podman](

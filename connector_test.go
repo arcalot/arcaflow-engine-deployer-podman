@@ -11,7 +11,16 @@ import (
 )
 
 func TestSimpleInOut(t *testing.T) {
-	configJSON := `{}`
+	configJSON := `
+{
+   "deployment":{
+
+   },
+   "podman":{
+      "path":"/usr/bin/podman"
+   }
+}
+`
 	var config any
 	if err := json.Unmarshal([]byte(configJSON), &config); err != nil {
 		t.Fatal(err)
