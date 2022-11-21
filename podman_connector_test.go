@@ -1,35 +1,39 @@
 package podman
 
 import (
-	"arcaflow-engine-deployer-podman/wrapper"
-	"fmt"
-	"github.com/docker/docker/api/types/container"
-	"sync"
+	"context"
+	"encoding/json"
+	"go.arcalot.io/assert"
+	"go.arcalot.io/log"
+	"io"
+	"strings"
 	"testing"
 )
 
-func TestPodmanConnector_Write(t *testing.T) {
-	config := Config{
-		Podman: Podman{
-			Path: GetPodmanPath(),
-		},
-		Deployment: Deployment{
-			ContainerConfig: &container.Config{
-				Image: testImageIo,
-			},
-		},
+func TestSimpleInOut(t *testing.T) {
+	configJSON := `{}`
+	var config any
+	if err := json.Unmarshal([]byte(configJSON), &config); err != nil {
+		t.Fatal(err)
 	}
-	podmanWrapper := wrapper.NewPodmanWrapper(GetPodmanPath())
 
-	podmanConnector := PodmanConnector{
-		Config:       &config,
-		ContainerOut: []byte{},
-		Lock:         &sync.Mutex{},
-		Wrapper:      podmanWrapper,
-	}
-	command := "ls -al"
-	podmanConnector.Write([]byte(command))
-	var out []byte
-	podmanConnector.Read(out)
-	fmt.Print(string(out))
+	factory := NewFactory()
+	schema := factory.ConfigurationSchema()
+	unserializedConfig, err := schema.UnserializeType(config)
+	assert.NoError(t, err)
+	connector, err := factory.Create(unserializedConfig, log.NewTestLogger(t))
+	assert.NoError(t, err)
+
+	container, err := connector.Deploy(context.Background(), "quay.io/joconnel/io-test-script")
+	assert.NoError(t, err)
+	t.Cleanup(func() {
+		assert.NoError(t, container.Close())
+	})
+
+	var containerInput = []byte("abc\n")
+	assert.NoErrorR[int](t)(container.Write(containerInput))
+
+	buf := new(strings.Builder)
+	assert.NoErrorR[int64](t)(io.Copy(buf, container))
+	assert.Contains(t, buf.String(), "This is what input was received: \"abc\"")
 }

@@ -20,6 +20,11 @@ func dockerGetDefaultSocket() string {
 	return "unix:///var/run/docker.sock"
 }
 
+func podmanGetDefaultPath() string {
+	// TODO: implement a better logic to resolve podman binary
+	return "/usr/bin/podman"
+}
+
 // Schema describes the deployment options of the Docker deployment mechanism.
 var Schema = schema.NewTypedScopeSchema[*Config](
 	schema.NewStructMappedObjectSchema[*Config](
@@ -51,7 +56,7 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 				nil,
 				nil,
 				nil,
-				nil,
+				schema.PointerTo(util.JSONEncode(podmanGetDefaultPath())),
 				nil,
 			),
 		},

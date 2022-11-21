@@ -1,6 +1,7 @@
 package podman
 
 import (
+	"arcaflow-engine-deployer-podman/wrapper"
 	"go.arcalot.io/log"
 	"go.flow.arcalot.io/deployer"
 	"go.flow.arcalot.io/pluginsdk/schema"
@@ -23,5 +24,10 @@ func (f factory) ConfigurationSchema() *schema.TypedScopeSchema[*Config] {
 }
 
 func (f factory) Create(config *Config, logger log.Logger) (deployer.Connector, error) {
-	return Connector{}, nil
+	podman := wrapper.NewPodmanWrapper(config.Podman.Path)
+	return Connector{
+		config: config,
+		logger: logger,
+		podman: podman,
+	}, nil
 }

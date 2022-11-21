@@ -22,11 +22,12 @@ func (c Connector) Deploy(ctx context.Context, image string) (deployer.Plugin, e
 	if err := c.pullImage(ctx, image); err != nil {
 		return nil, err
 	}
-	podmanWrapper := wrapper.NewPodmanWrapper(c.config.Podman.Path)
+	//TODO FIX IT
+	podmanWrapper := wrapper.NewPodmanWrapper("/usr/bin/podman")
 	podmanConnector := PodmanConnector{
-		ContainerOut: []byte{},
-		Wrapper:      podmanWrapper,
-		Lock:         &sync.Mutex{},
+		Wrapper: podmanWrapper,
+		Lock:    &sync.Mutex{},
+		Image:   image,
 	}
 	return &podmanConnector, nil
 }

@@ -30,7 +30,8 @@ func (p *podman) decorateImageName(image string) string {
 
 func (p *podman) ImageExists(image string) (*bool, error) {
 	image = p.decorateImageName(image)
-	cmd := exec.Command(p.PodmanFullPath, "image", "ls", "--format", "{{.Repository}}:{{.Tag}}")
+	//cmd := exec.Command(p.PodmanFullPath, "image", "ls", "--format", "{{.Repository}}:{{.Tag}}")
+	cmd := exec.Command("/usr/bin/podman", "image", "ls", "--format", "{{.Repository}}:{{.Tag}}")
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	if err := cmd.Run(); err != nil {
@@ -60,7 +61,7 @@ func (p *podman) PullImage(image string, platform *string) error {
 
 func (p *podman) Deploy(image string) (io.WriteCloser, io.ReadCloser, *exec.Cmd, error) {
 	image = p.decorateImageName(image)
-	commandArgs := []string{"run", "-i", "-a", "stdin", "-a", "stdout", "-a", "stderr", image}
+	commandArgs := []string{"run", "-i", "-a", "stdin", "-a", "stdout", image}
 	cmd := exec.Command(p.PodmanFullPath, commandArgs...)
 
 	stdin, err := cmd.StdinPipe()
