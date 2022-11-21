@@ -1,7 +1,6 @@
 package podman
 
 import (
-	"arcaflow-engine-deployer-podman/wrapper"
 	"bufio"
 	"bytes"
 	"io"
@@ -10,7 +9,7 @@ import (
 
 type Cli struct {
 	stdoutBuffer   bytes.Buffer
-	wrapper        wrapper.PodmanWrapper
+	wrapper        PodmanWrapper
 	lock           *sync.Mutex
 	containerImage string
 	readIndex      int64

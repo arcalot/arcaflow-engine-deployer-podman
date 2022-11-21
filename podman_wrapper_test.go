@@ -1,54 +1,11 @@
-package wrapper
+package podman
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"github.com/joho/godotenv"
 	"go.arcalot.io/assert"
-	"os"
 	"os/exec"
 	"testing"
 )
-
-const testImage = "quay.io/podman/hello:latest:latest"
-const testImageNoTag = "quay.io/podman/hello"
-const testImageNoBaseUrl = "hello:latest"
-const testNotExistingTag = "quay.io/podman/hello:v0"
-const testNotExistingImage = "quay.io/podman/imatestidonotexist:latest"
-const testNotExistingImageNoBaseUrl = "imatestidonotexist:latest"
-
-type basicInspection struct {
-	Architecture string `json:"Architecture"`
-	Os           string `json:"Os"`
-}
-
-func GetPodmanPath() string {
-	if err := godotenv.Load("../env/test.env"); err != nil {
-		panic(err)
-	}
-	return os.Getenv("PODMAN_PATH")
-}
-
-func RemoveImage(image string) {
-	cmd := exec.Command(GetPodmanPath(), "rmi", "-f", image)
-	cmd.Run()
-}
-
-func InspectImage(image string) *basicInspection {
-	cmd := exec.Command(GetPodmanPath(), "inspect", image)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Run()
-	var objects []basicInspection
-	if err := json.Unmarshal(out.Bytes(), &objects); err != nil {
-		panic(err)
-	}
-	if len(objects) == 0 {
-		return nil
-	}
-	return &objects[0]
-}
 
 func TestPodman_ImageExists(t *testing.T) {
 

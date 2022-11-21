@@ -1,7 +1,6 @@
 package podman
 
 import (
-	"arcaflow-engine-deployer-podman/wrapper"
 	"context"
 	"go.arcalot.io/log"
 	"go.flow.arcalot.io/deployer"
@@ -12,7 +11,7 @@ import (
 type Connector struct {
 	config *Config
 	logger log.Logger
-	podman wrapper.PodmanWrapper
+	podman PodmanWrapper
 }
 
 var tagRegexp = regexp.MustCompile("^[a-zA-Z0-9.-]$")
@@ -22,7 +21,7 @@ func (c Connector) Deploy(ctx context.Context, image string) (deployer.Plugin, e
 		return nil, err
 	}
 
-	podmanWrapper := wrapper.NewPodmanWrapper("/usr/bin/podman")
+	podmanWrapper := NewPodmanWrapper("/usr/bin/podman")
 	podmanConnector := Cli{
 		wrapper:        podmanWrapper,
 		lock:           &sync.Mutex{},
