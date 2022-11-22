@@ -11,7 +11,7 @@ import (
 type Connector struct {
 	config *Config
 	logger log.Logger
-	podman PodmanWrapper
+	podman Wrapper
 }
 
 var tagRegexp = regexp.MustCompile("^[a-zA-Z0-9.-]$")
@@ -21,7 +21,7 @@ func (c Connector) Deploy(ctx context.Context, image string) (deployer.Plugin, e
 		return nil, err
 	}
 
-	podmanWrapper := NewPodmanWrapper("/usr/bin/podman")
+	podmanWrapper := NewWrapper("/usr/bin/podman")
 	podmanConnector := Cli{
 		wrapper:        podmanWrapper,
 		lock:           &sync.Mutex{},

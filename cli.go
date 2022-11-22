@@ -7,9 +7,14 @@ import (
 	"sync"
 )
 
+//TODO: namespace setting
+//volume mounts
+//envvars
+//networking
+
 type Cli struct {
 	stdoutBuffer   bytes.Buffer
-	wrapper        PodmanWrapper
+	wrapper        Wrapper
 	lock           *sync.Mutex
 	containerImage string
 	readIndex      int64

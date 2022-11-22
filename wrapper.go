@@ -14,7 +14,7 @@ type podman struct {
 	PodmanFullPath string
 }
 
-func NewPodmanWrapper(fullPath string) PodmanWrapper {
+func NewWrapper(fullPath string) Wrapper {
 	return &podman{
 		PodmanFullPath: fullPath,
 	}
