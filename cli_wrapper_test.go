@@ -11,7 +11,7 @@ func TestPodman_ImageExists(t *testing.T) {
 
 	RemoveImage(testImage)
 
-	podman := NewWrapper(GetPodmanPath())
+	podman := NewCliWrapper(GetPodmanPath())
 	assert.NotNil(t, GetPodmanPath())
 
 	cmd := exec.Command(GetPodmanPath(), "pull", testImage)
@@ -48,7 +48,7 @@ func TestPodman_PullImage(t *testing.T) {
 
 	RemoveImage(testImage)
 
-	podman := NewWrapper(GetPodmanPath())
+	podman := NewCliWrapper(GetPodmanPath())
 	assert.NotNil(t, GetPodmanPath())
 
 	// pull without platform

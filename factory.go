@@ -23,7 +23,7 @@ func (f factory) ConfigurationSchema() *schema.TypedScopeSchema[*Config] {
 }
 
 func (f factory) Create(config *Config, logger log.Logger) (deployer.Connector, error) {
-	podman := NewWrapper(config.Podman.Path)
+	podman := NewCliWrapper(config.Podman.Path)
 	return Connector{
 		config: config,
 		logger: logger,

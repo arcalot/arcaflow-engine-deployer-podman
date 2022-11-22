@@ -168,12 +168,13 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 				nil,
 			),
 			"Env": schema.NewPropertySchema(
-				schema.NewMapSchema(
+				schema.NewListSchema(schema.NewStringSchema(schema.IntPointer(1), schema.IntPointer(32760), regexp.MustCompile("^.+\\=.+$")), nil, nil),
+				/*schema.NewMapSchema(
 					schema.NewStringSchema(schema.IntPointer(1), schema.IntPointer(255), regexp.MustCompile("^[A-Z0-9_]+$")),
-					schema.NewStringSchema(nil, schema.IntPointer(32760), nil),
+					schema.NewStringSchema(nil, , nil),
 					nil,
 					nil,
-				),
+				),*/
 				schema.NewDisplayValue(schema.PointerTo("Environment variables"), schema.PointerTo("Environment variables to set on the plugin container."), nil),
 				false,
 				nil,

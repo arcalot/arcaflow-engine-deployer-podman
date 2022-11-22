@@ -10,17 +10,17 @@ import (
 	"strings"
 )
 
-type podman struct {
+type cliWrapper struct {
 	PodmanFullPath string
 }
 
-func NewWrapper(fullPath string) Wrapper {
-	return &podman{
+func NewCliWrapper(fullPath string) CliWrapper {
+	return &cliWrapper{
 		PodmanFullPath: fullPath,
 	}
 }
 
-func (p *podman) decorateImageName(image string) string {
+func (p *cliWrapper) decorateImageName(image string) string {
 	imageParts := strings.Split(image, ":")
 	if len(imageParts) == 1 {
 		image = fmt.Sprintf("%s:latest", image)
@@ -28,7 +28,17 @@ func (p *podman) decorateImageName(image string) string {
 	return image
 }
 
-func (p *podman) ImageExists(image string) (*bool, error) {
+func (p *cliWrapper) commandSetEnv(command *[]string, env *[]string) {
+	if env != nil {
+		for _, v := range *env {
+			if tokens := strings.Split(v, "="); len(tokens) == 2 {
+				*command = append(*command, "-e", v)
+			}
+		}
+	}
+}
+
+func (p *cliWrapper) ImageExists(image string) (*bool, error) {
 	image = p.decorateImageName(image)
 	//cmd := exec.Command(p.PodmanFullPath, "image", "ls", "--format", "{{.Repository}}:{{.Tag}}")
 	cmd := exec.Command("/usr/bin/podman", "image", "ls", "--format", "{{.Repository}}:{{.Tag}}")
@@ -43,7 +53,7 @@ func (p *podman) ImageExists(image string) (*bool, error) {
 	return &exists, nil
 }
 
-func (p *podman) PullImage(image string, platform *string) error {
+func (p *cliWrapper) PullImage(image string, platform *string) error {
 	commandArgs := []string{"pull"}
 	if platform != nil {
 		commandArgs = append(commandArgs, []string{"--platform", *platform}...)
@@ -59,9 +69,11 @@ func (p *podman) PullImage(image string, platform *string) error {
 	return nil
 }
 
-func (p *podman) Deploy(image string) (io.WriteCloser, io.ReadCloser, *exec.Cmd, error) {
+func (p *cliWrapper) Deploy(image string, env *[]string) (io.WriteCloser, io.ReadCloser, *exec.Cmd, error) {
 	image = p.decorateImageName(image)
-	commandArgs := []string{"run", "-i", "-a", "stdin", "-a", "stdout", image}
+	commandArgs := []string{"run", "-i", "-a", "stdin", "-a", "stdout"}
+	p.commandSetEnv(&commandArgs, env)
+	commandArgs = append(commandArgs, image)
 	cmd := exec.Command(p.PodmanFullPath, commandArgs...)
 
 	stdin, err := cmd.StdinPipe()

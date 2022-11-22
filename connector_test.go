@@ -17,10 +17,10 @@ func getConnector(t *testing.T) deployer.Connector {
    "deployment":{
       "container":{
          "NetworkDisabled":true,
-         "Env":{
-            "ENV1":"TEST1",
-            "ENV2":"TEST2"
-         }
+         "Env":[
+            "DEPLOYER_PODMAN_TEST_1=TEST1",
+            "DEPLOYER_PODMAN_TEST_2=TEST2"
+         ]
       }
    },
    "podman":{
@@ -55,4 +55,24 @@ func TestSimpleInOut(t *testing.T) {
 	buf := new(strings.Builder)
 	assert.NoErrorR[int64](t)(io.Copy(buf, container))
 	assert.Contains(t, buf.String(), "This is what input was received: \"abc\"")
+}
+
+func TestEnv(t *testing.T) {
+	envVar1 := "DEPLOYER_PODMAN_TEST_1=TEST1"
+	envVar2 := "DEPLOYER_PODMAN_TEST_2=TEST2"
+	connector := getConnector(t)
+	container, err := connector.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
+	assert.NoError(t, err)
+	t.Cleanup(func() {
+		assert.NoError(t, container.Close())
+	})
+
+	var containerInput = []byte("env\n")
+
+	assert.NoErrorR[int](t)(container.Write(containerInput))
+
+	buf := new(strings.Builder)
+	assert.NoErrorR[int64](t)(io.Copy(buf, container))
+	assert.Contains(t, buf.String(), envVar1)
+	assert.Contains(t, buf.String(), envVar2)
 }

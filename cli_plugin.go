@@ -3,6 +3,7 @@ package podman
 import (
 	"bufio"
 	"bytes"
+	"github.com/docker/docker/api/types/container"
 	"io"
 	"sync"
 )
@@ -12,15 +13,16 @@ import (
 //envvars
 //networking
 
-type Cli struct {
+type CliPlugin struct {
 	stdoutBuffer   bytes.Buffer
-	wrapper        Wrapper
+	wrapper        CliWrapper
 	lock           *sync.Mutex
 	containerImage string
 	readIndex      int64
+	config         *Config
 }
 
-func (p *Cli) readStdout(r io.Reader) ([]byte, error) {
+func (p *CliPlugin) readStdout(r io.Reader) ([]byte, error) {
 	buffer := bytes.Buffer{}
 	writer := bufio.NewWriter(&buffer)
 	var out []byte
@@ -44,10 +46,19 @@ func (p *Cli) readStdout(r io.Reader) ([]byte, error) {
 	}
 }
 
-func (p *Cli) Write(b []byte) (n int, err error) {
+func (p *CliPlugin) unwrapContainerConfig() container.Config {
+	if p.config.Deployment.ContainerConfig != nil {
+		return *p.config.Deployment.ContainerConfig
+	} else {
+		return container.Config{}
+	}
+}
+
+func (p *CliPlugin) Write(b []byte) (n int, err error) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
-	in, out, cmd, err := p.wrapper.Deploy(p.containerImage)
+	containerConfig := p.unwrapContainerConfig()
+	in, out, cmd, err := p.wrapper.Deploy(p.containerImage, &containerConfig.Env)
 	if err != nil {
 		return 0, err
 	}
@@ -67,7 +78,7 @@ func (p *Cli) Write(b []byte) (n int, err error) {
 	return writtenBytes, nil
 }
 
-func (p *Cli) Read(b []byte) (n int, err error) {
+func (p *CliPlugin) Read(b []byte) (n int, err error) {
 	if p.readIndex >= int64(len(p.stdoutBuffer.Bytes())) {
 		err = io.EOF
 		return
@@ -77,7 +88,7 @@ func (p *Cli) Read(b []byte) (n int, err error) {
 	return
 }
 
-func (p *Cli) Close() error {
+func (p *CliPlugin) Close() error {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 	p.stdoutBuffer.Reset()
