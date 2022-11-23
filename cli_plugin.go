@@ -8,11 +8,6 @@ import (
 	"sync"
 )
 
-//TODO: namespace setting
-//volume mounts
-//envvars
-//networking
-
 type CliPlugin struct {
 	stdoutBuffer   bytes.Buffer
 	wrapper        CliWrapper
@@ -46,6 +41,7 @@ func (p *CliPlugin) readStdout(r io.Reader) ([]byte, error) {
 	}
 }
 
+// TODO: unwrap the whole config
 func (p *CliPlugin) unwrapContainerConfig() container.Config {
 	if p.config.Deployment.ContainerConfig != nil {
 		return *p.config.Deployment.ContainerConfig
@@ -54,11 +50,20 @@ func (p *CliPlugin) unwrapContainerConfig() container.Config {
 	}
 }
 
+func (p *CliPlugin) unwrapHostConfig() container.HostConfig {
+	if p.config.Deployment.HostConfig != nil {
+		return *p.config.Deployment.HostConfig
+	} else {
+		return container.HostConfig{}
+	}
+}
+
 func (p *CliPlugin) Write(b []byte) (n int, err error) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 	containerConfig := p.unwrapContainerConfig()
-	in, out, cmd, err := p.wrapper.Deploy(p.containerImage, &containerConfig.Env)
+	hostConfig := p.unwrapHostConfig()
+	in, out, cmd, err := p.wrapper.Deploy(p.containerImage, containerConfig.Env, hostConfig.Binds)
 	if err != nil {
 		return 0, err
 	}

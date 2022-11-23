@@ -11,6 +11,10 @@ test_env () {
   exit 0
 }
 
+test_volume () {
+  cat /test/test_file.txt
+}
+
 echo Enter a test and a parameter:
 read -r action value
 case $action in
@@ -19,6 +23,9 @@ case $action in
     ;;
   env)
     test_env
+    ;;
+  volume)
+    test_volume
     ;;
   *)
     echo "no valid input provided, exiting"

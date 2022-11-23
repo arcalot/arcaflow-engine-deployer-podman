@@ -169,12 +169,6 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 			),
 			"Env": schema.NewPropertySchema(
 				schema.NewListSchema(schema.NewStringSchema(schema.IntPointer(1), schema.IntPointer(32760), regexp.MustCompile("^.+\\=.+$")), nil, nil),
-				/*schema.NewMapSchema(
-					schema.NewStringSchema(schema.IntPointer(1), schema.IntPointer(255), regexp.MustCompile("^[A-Z0-9_]+$")),
-					schema.NewStringSchema(nil, , nil),
-					nil,
-					nil,
-				),*/
 				schema.NewDisplayValue(schema.PointerTo("Environment variables"), schema.PointerTo("Environment variables to set on the plugin container."), nil),
 				false,
 				nil,
@@ -208,6 +202,16 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 	schema.NewStructMappedObjectSchema[*container.HostConfig](
 		"HostConfig",
 		map[string]*schema.PropertySchema{
+			"Binds": schema.NewPropertySchema(
+				schema.NewListSchema(schema.NewStringSchema(schema.IntPointer(1), schema.IntPointer(32760), regexp.MustCompile("^.+\\:.+$")), nil, nil),
+				schema.NewDisplayValue(schema.PointerTo("Volume Bindings"), schema.PointerTo("Volumes"), nil),
+				false,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+			),
 			"NetworkMode": schema.NewPropertySchema(
 				schema.NewStringSchema(nil, nil, regexp.MustCompile("^(none|bridge|host|container:[a-zA-Z0-9][a-zA-Z0-9_.-]+|[a-zA-Z0-9][a-zA-Z0-9_.-]+)$")),
 				schema.NewDisplayValue(schema.PointerTo("Network mode"), schema.PointerTo("Specifies either the network mode, the container network to attach to, or a name of a Docker network to use."), nil),

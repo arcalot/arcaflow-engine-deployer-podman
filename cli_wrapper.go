@@ -1,5 +1,9 @@
 package podman
 
+//TODO: namespace setting
+//volume mounts
+//envvars
+//networking
 import (
 	"arcaflow-engine-deployer-podman/util"
 	"bytes"
@@ -28,20 +32,25 @@ func (p *cliWrapper) decorateImageName(image string) string {
 	return image
 }
 
-func (p *cliWrapper) commandSetEnv(command *[]string, env *[]string) {
-	if env != nil {
-		for _, v := range *env {
-			if tokens := strings.Split(v, "="); len(tokens) == 2 {
-				*command = append(*command, "-e", v)
-			}
+func (p *cliWrapper) commandSetEnv(command *[]string, env []string) {
+	for _, v := range env {
+		if tokens := strings.Split(v, "="); len(tokens) == 2 {
+			*command = append(*command, "-e", v)
+		}
+	}
+}
+
+func (p *cliWrapper) commandSetVolumes(command *[]string, binds []string) {
+	for _, v := range binds {
+		if tokens := strings.Split(v, ":"); len(tokens) == 2 {
+			*command = append(*command, "-v", v)
 		}
 	}
 }
 
 func (p *cliWrapper) ImageExists(image string) (*bool, error) {
 	image = p.decorateImageName(image)
-	//cmd := exec.Command(p.PodmanFullPath, "image", "ls", "--format", "{{.Repository}}:{{.Tag}}")
-	cmd := exec.Command("/usr/bin/podman", "image", "ls", "--format", "{{.Repository}}:{{.Tag}}")
+	cmd := exec.Command(p.PodmanFullPath, "image", "ls", "--format", "{{.Repository}}:{{.Tag}}")
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	if err := cmd.Run(); err != nil {
@@ -69,10 +78,11 @@ func (p *cliWrapper) PullImage(image string, platform *string) error {
 	return nil
 }
 
-func (p *cliWrapper) Deploy(image string, env *[]string) (io.WriteCloser, io.ReadCloser, *exec.Cmd, error) {
+func (p *cliWrapper) Deploy(image string, env []string, volumeBinds []string) (io.WriteCloser, io.ReadCloser, *exec.Cmd, error) {
 	image = p.decorateImageName(image)
 	commandArgs := []string{"run", "-i", "-a", "stdin", "-a", "stdout"}
 	p.commandSetEnv(&commandArgs, env)
+	p.commandSetVolumes(&commandArgs, volumeBinds)
 	commandArgs = append(commandArgs, image)
 	cmd := exec.Command(p.PodmanFullPath, commandArgs...)
 
