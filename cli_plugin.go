@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"github.com/docker/docker/api/types/container"
 	"io"
+	"os/exec"
 	"sync"
 )
 
@@ -63,7 +64,15 @@ func (p *CliPlugin) Write(b []byte) (n int, err error) {
 	defer p.lock.Unlock()
 	containerConfig := p.unwrapContainerConfig()
 	hostConfig := p.unwrapHostConfig()
-	in, out, cmd, err := p.wrapper.Deploy(p.containerImage, containerConfig.Env, hostConfig.Binds)
+
+	in, out, cmd, err := p.wrapper.Deploy(
+		p.containerImage,
+		p.config.Podman.ContainerName,
+		containerConfig.Env,
+		hostConfig.Binds,
+		p.config.Podman.CgroupNs,
+	)
+
 	if err != nil {
 		return 0, err
 	}
@@ -78,7 +87,10 @@ func (p *CliPlugin) Write(b []byte) (n int, err error) {
 	}
 	p.stdoutBuffer.Write(stdout)
 	if err := cmd.Wait(); err != nil {
-		return 0, nil
+		if exiterr, ok := err.(*exec.ExitError); ok {
+			return 0, exiterr
+		}
+		return 0, err
 	}
 	return writtenBytes, nil
 }

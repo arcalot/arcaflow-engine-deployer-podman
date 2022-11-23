@@ -33,7 +33,9 @@ const (
 )
 
 type Podman struct {
-	Path string `json:"path"`
+	Path          string `json:"path"`
+	ContainerName string `json:"containerName"`
+	CgroupNs      string `json:"cgroupNs"`
 }
 
 // Deployment contains the information about deploying the plugin.

@@ -2,6 +2,7 @@
 
 
 test_input () {
+  sleep 5
   echo This is what input was received: \"$1\"
   exit 0
 }
@@ -13,6 +14,12 @@ test_env () {
 
 test_volume () {
   cat /test/test_file.txt
+  exit 0
+}
+
+test_sleep () {
+  /usr/bin/sleep $1
+  exit 0
 }
 
 echo Enter a test and a parameter:
@@ -26,6 +33,9 @@ case $action in
     ;;
   volume)
     test_volume
+    ;;
+  sleep)
+    test_sleep $value
     ;;
   *)
     echo "no valid input provided, exiting"

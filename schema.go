@@ -9,16 +9,7 @@ import (
 	"github.com/docker/go-connections/nat"
 	"go.flow.arcalot.io/pluginsdk/schema"
 	"regexp"
-	"runtime"
 )
-
-func dockerGetDefaultSocket() string {
-	//goland:noinspection GoBoolExpressions
-	if runtime.GOOS == "windows" {
-		return "npipe:////./pipe/docker_engine"
-	}
-	return "unix:///var/run/docker.sock"
-}
 
 func podmanGetDefaultPath() string {
 	// TODO: implement a better logic to resolve podman binary
@@ -71,6 +62,26 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 				nil,
 				nil,
 				schema.PointerTo(util.JSONEncode(podmanGetDefaultPath())),
+				nil,
+			),
+			"containerName": schema.NewPropertySchema(
+				schema.NewStringSchema(nil, nil, regexp.MustCompile("^.*$")),
+				schema.NewDisplayValue(schema.PointerTo("Container Name"), schema.PointerTo("Provides name of the container"), nil),
+				false,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+			),
+			"cgroupNs": schema.NewPropertySchema(
+				schema.NewStringSchema(nil, nil, regexp.MustCompile("^host|ns\\:.+|container\\:.+|private$")),
+				schema.NewDisplayValue(schema.PointerTo("CGroup namespace"), schema.PointerTo("Provides the Cgroup Namespace settings for the container"), nil),
+				false,
+				nil,
+				nil,
+				nil,
+				nil,
 				nil,
 			),
 		},
