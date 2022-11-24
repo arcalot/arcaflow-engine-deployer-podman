@@ -15,13 +15,17 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 func getTestRandomString(n int) string {
-	const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	var seededRand *rand.Rand = rand.New(
+		rand.NewSource(time.Now().UnixNano()))
+	const charset = "abcdefghijklmnopqrstuvwxyz" +
+		"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	b := make([]byte, n)
 	for i := range b {
-		b[i] = letterBytes[rand.Int63()%int64(len(letterBytes))]
+		b[i] = charset[seededRand.Intn(len(charset))]
 	}
 	return string(b)
 }
@@ -190,21 +194,23 @@ var cgroupTemplate = `
 {
    "podman":{
       "path":"/usr/bin/podman",
-      "containerName":"%s"
+      "containerName":"%s",
       "cgroupNs":"%s"
    }
 }
 `
 
 func TestContainerCgroupNs(t *testing.T) {
-	containername1 := fmt.Sprintf("test_%s", getTestRandomString(5))
+	containername1 := fmt.Sprintf("test%s", getTestRandomString(5))
+	//The first container will run with a private namespace that will be created at startup
 	configtemplate1 := fmt.Sprintf(cgroupTemplate, containername1, "private")
 	connector1, config := getConnector(t, configtemplate1)
 
 	container1, err := connector1.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
 	assert.NoError(t, err)
 
-	containername2 := fmt.Sprintf("test_%s", getTestRandomString(5))
+	containername2 := fmt.Sprintf("test%s", getTestRandomString(5))
+	//The second one will join the newly created private namespace of the first container
 	configtemplate2 := fmt.Sprintf(cgroupTemplate, containername2, fmt.Sprintf("container:%s", containername1))
 	connector2, _ := getConnector(t, configtemplate2)
 
@@ -224,33 +230,116 @@ func TestContainerCgroupNs(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		var containerInput = []byte("sleep 10\n")
+		var containerInput = []byte("sleep 7\n")
 		assert.NoErrorR[int](t)(container1.Write(containerInput))
 	}()
+	//sleeps to wait the first container become ready and attach to its cgroup ns
+	time.Sleep(2 * time.Second)
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		var containerInput = []byte("sleep 10\n")
-		assert.NoErrorR[int](t)(container1.Write(containerInput))
+		var containerInput = []byte("sleep 5\n")
+		assert.NoErrorR[int](t)(container2.Write(containerInput))
 	}()
+
+	var stdoutContainer1 bytes.Buffer
+	var stdoutContainer2 bytes.Buffer
+
+	cmd1 := exec.Command(config.Podman.Path, "ps", "--ns", "--filter", fmt.Sprintf("name=%s", containername1), "--format", "{{.CGROUPNS}}")
+	cmd1.Stdout = &stdoutContainer1
+	cmd1.Run()
+
+	cmd2 := exec.Command(config.Podman.Path, "ps", "--ns", "--filter", fmt.Sprintf("name=%s", containername2), "--format", "{{.CGROUPNS}}")
+	cmd2.Stdout = &stdoutContainer2
+	cmd2.Run()
+	//check that both the container are running in the same namespace
+	assert.Equals(t, stdoutContainer1.String(), stdoutContainer2.String())
 	wg.Wait()
 
 }
 
-// /usr/bin/readlink /proc/*/task/*/ns/* | sort -u | grep cgroup
-// podman ps --ns --format {{.CGROUPNS}}
-// podman run --cgroupns private --name -i -d docker.io/library/bash:latest /bin/sleep 3000
-// podman ps --filter name=test_1
-// podman ps --filter name=test_1 --format {{.ID}}
-// podman delete test_1
 func TestPrivateCgroupNs(t *testing.T) {
-	/*connector, config := getConnector(t, fmt.Sprintf(cgroupTemplate, "private"))
-	container, err := connector.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
+	// get the user cgroup ns
+	log := log.NewTestLogger(t)
+	var wg sync.WaitGroup
+	userCgroupNs := getHostCgroupNs()
+	assert.NotNil(t, userCgroupNs)
+	log.Debugf("Detected cgroup namespace for user: %s", userCgroupNs)
 
-	cmd := exec.Command(config.Podman.Path, "ps", "--ns", "--format", "{{.CGROUPNS}}")
-	err := cmd.Run()*/
+	containername := fmt.Sprintf("test%s", getTestRandomString(5))
+	//The first container will run with a private namespace that will be created at startup
+	configtemplate := fmt.Sprintf(cgroupTemplate, containername, "private")
+	connector, config := getConnector(t, configtemplate)
+	container, err := connector.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
+	assert.NoError(t, err)
+
+	t.Cleanup(func() {
+		cmd := exec.Command(config.Podman.Path, "container", "rm", containername)
+		cmd.Run()
+		assert.NoError(t, container.Close())
+
+	})
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		var containerInput = []byte("sleep 5\n")
+		assert.NoErrorR[int](t)(container.Write(containerInput))
+	}()
+
+	time.Sleep(2 * time.Second)
+
+	var podmanCgroupNs = getPomanCgroupNs(config.Podman.Path, containername)
+	wg.Wait()
+
+	// if the user's namespace is equal to the podman one the test must fail
+	if userCgroupNs == podmanCgroupNs {
+		t.Fail()
+	} else {
+		log.Debugf("user cgroup namespace: %s, podman private cgroup namespace: %s, they're different!", userCgroupNs, podmanCgroupNs)
+	}
 }
 
 func TestHostCgroupNs(t *testing.T) {
+	// get the user cgroup ns
+	log := log.NewTestLogger(t)
+	var wg sync.WaitGroup
 
+	userCgroupNs := getHostCgroupNs()
+	assert.NotNil(t, userCgroupNs)
+
+	log.Debugf("Detected cgroup namespace for user: %s", userCgroupNs)
+	containername := fmt.Sprintf("test%s", getTestRandomString(5))
+	//The first container will run with the host namespace
+	configtemplate := fmt.Sprintf(cgroupTemplate, containername, "host")
+	connector, config := getConnector(t, configtemplate)
+	container, err := connector.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
+	assert.NoError(t, err)
+
+	t.Cleanup(func() {
+		cmd := exec.Command(config.Podman.Path, "container", "rm", containername)
+		cmd.Run()
+		assert.NoError(t, container.Close())
+
+	})
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		var containerInput = []byte("sleep 5\n")
+		assert.NoErrorR[int](t)(container.Write(containerInput))
+	}()
+	// waits for the container to become ready
+	time.Sleep(2 * time.Second)
+
+	var podmanCgroupNs = getPomanCgroupNs(config.Podman.Path, containername)
+	assert.NotNil(t, podmanCgroupNs)
+	wg.Wait()
+	// if the container is running in a different cgroup namespace than the user the test must fail
+	if userCgroupNs != podmanCgroupNs {
+		t.Fail()
+	} else {
+		log.Debugf("user cgroup namespace: %s, podman cgroup namespace: %s, the same!", userCgroupNs, podmanCgroupNs)
+	}
 }

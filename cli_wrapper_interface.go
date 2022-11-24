@@ -14,5 +14,5 @@ type CliWrapper interface {
 		env []string,
 		volumeBinds []string,
 		cgroupNs string,
-	) (io.WriteCloser, io.ReadCloser, *exec.Cmd, error)
+	) (io.WriteCloser, io.ReadCloser, io.ReadCloser, *exec.Cmd, error)
 }

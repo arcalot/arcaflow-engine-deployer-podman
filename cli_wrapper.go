@@ -92,10 +92,10 @@ func (p *cliWrapper) Deploy(
 	env []string,
 	volumeBinds []string,
 	cgroupNs string,
-) (io.WriteCloser, io.ReadCloser, *exec.Cmd, error) {
+) (io.WriteCloser, io.ReadCloser, io.ReadCloser, *exec.Cmd, error) {
 
 	image = p.decorateImageName(image)
-	commandArgs := []string{"run", "-i", "-a", "stdin", "-a", "stdout"}
+	commandArgs := []string{"run", "-i", "-a", "stdin", "-a", "stdout", "-a", "stderr"}
 	p.commandSetContainerName(&commandArgs, containerName)
 	p.commandSetEnv(&commandArgs, env)
 	p.commandSetVolumes(&commandArgs, volumeBinds)
@@ -105,16 +105,21 @@ func (p *cliWrapper) Deploy(
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
+	}
+
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return nil, nil, nil, nil, err
 	}
 
 	if err := cmd.Start(); err != nil {
-		return nil, nil, nil, errors.New(err.Error())
+		return nil, nil, nil, nil, errors.New(err.Error())
 	}
-	return stdin, stdout, cmd, nil
+	return stdin, stdout, stderr, cmd, nil
 }

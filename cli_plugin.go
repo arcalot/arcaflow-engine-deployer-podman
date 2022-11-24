@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"github.com/docker/docker/api/types/container"
+	"go.arcalot.io/log"
 	"io"
 	"os/exec"
 	"sync"
@@ -16,6 +17,7 @@ type CliPlugin struct {
 	containerImage string
 	readIndex      int64
 	config         *Config
+	logger         log.Logger
 }
 
 func (p *CliPlugin) readStdout(r io.Reader) ([]byte, error) {
@@ -65,7 +67,7 @@ func (p *CliPlugin) Write(b []byte) (n int, err error) {
 	containerConfig := p.unwrapContainerConfig()
 	hostConfig := p.unwrapHostConfig()
 
-	in, out, cmd, err := p.wrapper.Deploy(
+	stdin, stdout, _, cmd, err := p.wrapper.Deploy(
 		p.containerImage,
 		p.config.Podman.ContainerName,
 		containerConfig.Env,
@@ -76,16 +78,16 @@ func (p *CliPlugin) Write(b []byte) (n int, err error) {
 	if err != nil {
 		return 0, err
 	}
-	writtenBytes, err := in.Write(b)
+	writtenBytes, err := stdin.Write(b)
 	if err != nil {
 		return 0, err
 	}
 
-	stdout, err := p.readStdout(out)
+	stdoutBuf, err := p.readStdout(stdout)
 	if err != nil {
 		return 0, err
 	}
-	p.stdoutBuffer.Write(stdout)
+	p.stdoutBuffer.Write(stdoutBuf)
 	if err := cmd.Wait(); err != nil {
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			return 0, exiterr
