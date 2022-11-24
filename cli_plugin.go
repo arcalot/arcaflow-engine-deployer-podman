@@ -1,15 +1,13 @@
 package podman
 
 import (
-	args "arcaflow-engine-deployer-podman/args_builder"
 	"arcaflow-engine-deployer-podman/cli_wrapper"
 	"arcaflow-engine-deployer-podman/config"
 	"bufio"
 	"bytes"
-	"github.com/docker/docker/api/types/container"
+	"fmt"
 	"go.arcalot.io/log"
 	"io"
-	"os/exec"
 	"sync"
 )
 
@@ -21,9 +19,11 @@ type CliPlugin struct {
 	readIndex      int64
 	config         *config.Config
 	logger         log.Logger
+	stdin          io.WriteCloser
+	stdout         io.ReadCloser
 }
 
-func (p *CliPlugin) readStdout(r io.Reader) ([]byte, error) {
+func (p *CliPlugin) readStdout(r io.Reader) {
 	buffer := bytes.Buffer{}
 	writer := bufio.NewWriter(&buffer)
 	var out []byte
@@ -35,72 +35,57 @@ func (p *CliPlugin) readStdout(r io.Reader) ([]byte, error) {
 			out = append(out, d...)
 			_, err := writer.Write(d)
 			if err != nil {
-				return out, err
+				return
 			}
 		}
 		if err != nil {
 			if err == io.EOF {
 				err = nil
 			}
-			return out, err
+			return
 		}
 	}
 }
 
 // TODO: unwrap the whole config
-func (p *CliPlugin) unwrapContainerConfig() container.Config {
-	if p.config.Deployment.ContainerConfig != nil {
-		return *p.config.Deployment.ContainerConfig
-	} else {
-		return container.Config{}
-	}
-}
 
-func (p *CliPlugin) unwrapHostConfig() container.HostConfig {
-	if p.config.Deployment.HostConfig != nil {
-		return *p.config.Deployment.HostConfig
-	} else {
-		return container.HostConfig{}
+func (p *CliPlugin) _Write(b []byte) (n int, err error) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	if err != nil {
+		return 0, err
 	}
+	writtenBytes, err := p.stdin.Write(b)
+	if err != nil {
+		return 0, err
+	}
+
+	if err != nil {
+		return 0, err
+	}
+	//p.stdoutBuffer.Write(stdoutBuf)
+	/*	if err := cmd.Wait(); err != nil {
+		if exiterr, ok := err.(*exec.ExitError); ok {
+			return 0, exiterr
+		}
+		return 0, err
+	}*/
+	return writtenBytes, nil
 }
 
 func (p *CliPlugin) Write(b []byte) (n int, err error) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
-	containerConfig := p.unwrapContainerConfig()
-	hostConfig := p.unwrapHostConfig()
-	commandArgs := []string{"run", "-i", "-a", "stdin", "-a", "stdout", "-a", "stderr"}
-	args.NewBuilder(&commandArgs).
-		SetContainerName(p.config.Podman.ContainerName).
-		SetEnv(containerConfig.Env).
-		SetVolumes(hostConfig.Binds).
-		SetCgroupNs(p.config.Podman.CgroupNs)
-
-	stdin, stdout, _, cmd, err := p.wrapper.Deploy(p.containerImage, p.config.Podman.ContainerName, commandArgs)
-
-	if err != nil {
-		return 0, err
-	}
-	writtenBytes, err := stdin.Write(b)
-	if err != nil {
-		return 0, err
-	}
-
-	stdoutBuf, err := p.readStdout(stdout)
-	if err != nil {
-		return 0, err
-	}
-	p.stdoutBuffer.Write(stdoutBuf)
-	if err := cmd.Wait(); err != nil {
-		if exiterr, ok := err.(*exec.ExitError); ok {
-			return 0, exiterr
-		}
-		return 0, err
-	}
-	return writtenBytes, nil
+	buffer := new(bytes.Buffer)
+	buffer.Read(b)
+	_n, _err := io.Copy(p.stdin, buffer)
+	err = _err
+	n = int(_n)
+	return
 }
 
-func (p *CliPlugin) Read(b []byte) (n int, err error) {
+func (p *CliPlugin) _Read(b []byte) (n int, err error) {
 	if p.readIndex >= int64(len(p.stdoutBuffer.Bytes())) {
 		err = io.EOF
 		return
@@ -110,9 +95,32 @@ func (p *CliPlugin) Read(b []byte) (n int, err error) {
 	return
 }
 
+func (p *CliPlugin) Read(b []byte) (n int, err error) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+	reader := bufio.NewReader(p.stdout)
+	go p.readStdout(reader)
+	return 0, nil
+
+}
+
+func handleReader(reader *bufio.Reader) {
+	for {
+		str, err := reader.ReadString('\n')
+		if err != nil {
+			break
+		}
+
+		fmt.Print(str)
+
+	}
+}
+
 func (p *CliPlugin) Close() error {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 	p.stdoutBuffer.Reset()
+	p.stdout.Close()
+	p.stdin.Close()
 	return nil
 }

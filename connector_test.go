@@ -58,17 +58,17 @@ var inOutConfig = `
 
 func TestSimpleInOut(t *testing.T) {
 	connector, _ := getConnector(t, inOutConfig)
-	container, err := connector.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
+	plugin, err := connector.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
 	assert.NoError(t, err)
 	t.Cleanup(func() {
-		assert.NoError(t, container.Close())
+		assert.NoError(t, plugin.Close())
 	})
 
 	var containerInput = []byte("input abc\n")
-	assert.NoErrorR[int](t)(container.Write(containerInput))
-
+	assert.NoErrorR[int](t)(plugin.Write(containerInput))
+	assert.NoErrorR[int](t)(plugin.Write(containerInput))
 	buf := new(strings.Builder)
-	assert.NoErrorR[int64](t)(io.Copy(buf, container))
+	assert.NoErrorR[int64](t)(io.Copy(buf, plugin))
 	assert.Contains(t, buf.String(), "This is what input was received: \"abc\"")
 }
 

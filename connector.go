@@ -1,9 +1,11 @@
 package podman
 
 import (
+	args "arcaflow-engine-deployer-podman/args_builder"
 	"arcaflow-engine-deployer-podman/cli_wrapper"
 	"arcaflow-engine-deployer-podman/config"
 	"context"
+	"github.com/docker/docker/api/types/container"
 	"go.arcalot.io/log"
 	"go.flow.arcalot.io/deployer"
 	"regexp"
@@ -24,11 +26,27 @@ func (c Connector) Deploy(ctx context.Context, image string) (deployer.Plugin, e
 	}
 
 	cliWrapper := cli_wrapper.NewCliWrapper("/usr/bin/podman")
+
+	containerConfig := c.unwrapContainerConfig()
+	hostConfig := c.unwrapHostConfig()
+	commandArgs := []string{"run", "-i", "-a", "stdin", "-a", "stdout", "-a", "stderr"}
+	args.NewBuilder(&commandArgs).
+		SetContainerName(c.config.Podman.ContainerName).
+		SetEnv(containerConfig.Env).
+		SetVolumes(hostConfig.Binds).
+		SetCgroupNs(c.config.Podman.CgroupNs)
+	stdin, stdout, _, _, err := cliWrapper.Deploy(image, image, commandArgs)
+	if err != nil {
+		return nil, err
+	}
+
 	cliPlugin := CliPlugin{
 		wrapper:        cliWrapper,
 		lock:           &sync.Mutex{},
 		containerImage: image,
 		config:         c.config,
+		stdin:          stdin,
+		stdout:         stdout,
 	}
 	return &cliPlugin, nil
 }
@@ -55,4 +73,20 @@ func (c *Connector) pullImage(ctx context.Context, image string) error {
 		}
 	}
 	return nil
+}
+
+func (c *Connector) unwrapContainerConfig() container.Config {
+	if c.config.Deployment.ContainerConfig != nil {
+		return *c.config.Deployment.ContainerConfig
+	} else {
+		return container.Config{}
+	}
+}
+
+func (c *Connector) unwrapHostConfig() container.HostConfig {
+	if c.config.Deployment.HostConfig != nil {
+		return *c.config.Deployment.HostConfig
+	} else {
+		return container.HostConfig{}
+	}
 }
