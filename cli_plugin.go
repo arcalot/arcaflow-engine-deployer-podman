@@ -1,6 +1,9 @@
 package podman
 
 import (
+	args "arcaflow-engine-deployer-podman/args_builder"
+	"arcaflow-engine-deployer-podman/cli_wrapper"
+	"arcaflow-engine-deployer-podman/config"
 	"bufio"
 	"bytes"
 	"github.com/docker/docker/api/types/container"
@@ -12,11 +15,11 @@ import (
 
 type CliPlugin struct {
 	stdoutBuffer   bytes.Buffer
-	wrapper        CliWrapper
+	wrapper        cli_wrapper.CliWrapper
 	lock           *sync.Mutex
 	containerImage string
 	readIndex      int64
-	config         *Config
+	config         *config.Config
 	logger         log.Logger
 }
 
@@ -66,14 +69,14 @@ func (p *CliPlugin) Write(b []byte) (n int, err error) {
 	defer p.lock.Unlock()
 	containerConfig := p.unwrapContainerConfig()
 	hostConfig := p.unwrapHostConfig()
+	commandArgs := []string{"run", "-i", "-a", "stdin", "-a", "stdout", "-a", "stderr"}
+	args.NewBuilder(&commandArgs).
+		SetContainerName(p.config.Podman.ContainerName).
+		SetEnv(containerConfig.Env).
+		SetVolumes(hostConfig.Binds).
+		SetCgroupNs(p.config.Podman.CgroupNs)
 
-	stdin, stdout, _, cmd, err := p.wrapper.Deploy(
-		p.containerImage,
-		p.config.Podman.ContainerName,
-		containerConfig.Env,
-		hostConfig.Binds,
-		p.config.Podman.CgroupNs,
-	)
+	stdin, stdout, _, cmd, err := p.wrapper.Deploy(p.containerImage, p.config.Podman.ContainerName, commandArgs)
 
 	if err != nil {
 		return 0, err

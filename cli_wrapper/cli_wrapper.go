@@ -1,4 +1,4 @@
-package podman
+package cli_wrapper
 
 import (
 	"arcaflow-engine-deployer-podman/util"
@@ -86,23 +86,10 @@ func (p *cliWrapper) PullImage(image string, platform *string) error {
 	return nil
 }
 
-func (p *cliWrapper) Deploy(
-	image string,
-	containerName string,
-	env []string,
-	volumeBinds []string,
-	cgroupNs string,
-) (io.WriteCloser, io.ReadCloser, io.ReadCloser, *exec.Cmd, error) {
-
+func (p *cliWrapper) Deploy(image string, containerName string, args []string) (io.WriteCloser, io.ReadCloser, io.ReadCloser, *exec.Cmd, error) {
 	image = p.decorateImageName(image)
-	commandArgs := []string{"run", "-i", "-a", "stdin", "-a", "stdout", "-a", "stderr"}
-	p.commandSetContainerName(&commandArgs, containerName)
-	p.commandSetEnv(&commandArgs, env)
-	p.commandSetVolumes(&commandArgs, volumeBinds)
-	p.commandSetCgroupNs(&commandArgs, cgroupNs)
-	commandArgs = append(commandArgs, image)
-	cmd := exec.Command(p.PodmanFullPath, commandArgs...)
-
+	args = append(args, image)
+	cmd := exec.Command(p.PodmanFullPath, args...)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return nil, nil, nil, nil, err

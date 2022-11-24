@@ -1,4 +1,4 @@
-package podman
+package cli_wrapper
 
 import (
 	"io"
@@ -11,8 +11,6 @@ type CliWrapper interface {
 	Deploy(
 		image string,
 		containerName string,
-		env []string,
-		volumeBinds []string,
-		cgroupNs string,
+		args []string,
 	) (io.WriteCloser, io.ReadCloser, io.ReadCloser, *exec.Cmd, error)
 }

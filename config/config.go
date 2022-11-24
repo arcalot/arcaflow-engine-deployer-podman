@@ -1,4 +1,4 @@
-package podman
+package config
 
 import (
 	"github.com/docker/docker/api/types/container"

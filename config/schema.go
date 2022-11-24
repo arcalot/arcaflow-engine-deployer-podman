@@ -1,4 +1,4 @@
-package podman
+package config
 
 import (
 	"arcaflow-engine-deployer-podman/util"

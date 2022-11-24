@@ -1,6 +1,7 @@
 package podman
 
 import (
+	"arcaflow-engine-deployer-podman/config"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -30,7 +31,7 @@ func getTestRandomString(n int) string {
 	return string(b)
 }
 
-func getConnector(t *testing.T, configJson string) (deployer.Connector, *Config) {
+func getConnector(t *testing.T, configJson string) (deployer.Connector, *config.Config) {
 
 	var config any
 	if err := json.Unmarshal([]byte(configJson), &config); err != nil {
