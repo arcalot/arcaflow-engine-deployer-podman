@@ -75,7 +75,7 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 				nil,
 			),
 			"cgroupNs": schema.NewPropertySchema(
-				schema.NewStringSchema(nil, nil, regexp.MustCompile("^host|ns\\:.+|container\\:.+|private$")),
+				schema.NewStringSchema(nil, nil, regexp.MustCompile("^host|ns\\:\\/proc\\/\\d+\\/ns\\/cgroup|container\\:.+|private$")),
 				schema.NewDisplayValue(schema.PointerTo("CGroup namespace"), schema.PointerTo("Provides the Cgroup Namespace settings for the container"), nil),
 				false,
 				nil,

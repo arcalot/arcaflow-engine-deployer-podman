@@ -201,6 +201,7 @@ var cgroupTemplate = `
 `
 
 func TestContainerCgroupNs(t *testing.T) {
+	log := log.NewTestLogger(t)
 	containername1 := fmt.Sprintf("test%s", getTestRandomString(5))
 	//The first container will run with a private namespace that will be created at startup
 	configtemplate1 := fmt.Sprintf(cgroupTemplate, containername1, "private")
@@ -254,7 +255,13 @@ func TestContainerCgroupNs(t *testing.T) {
 	cmd2.Stdout = &stdoutContainer2
 	cmd2.Run()
 	//check that both the container are running in the same namespace
-	assert.Equals(t, stdoutContainer1.String(), stdoutContainer2.String())
+	ns1 := strings.TrimSuffix(stdoutContainer1.String(), "\n")
+	ns2 := strings.TrimSuffix(stdoutContainer2.String(), "\n")
+	if ns1 != ns2 {
+		t.Fail()
+	} else {
+		log.Debugf("container 1 namespace: %s, container 2 namespace: %s, they're the same!", ns1, ns2)
+	}
 	wg.Wait()
 
 }
@@ -263,7 +270,7 @@ func TestPrivateCgroupNs(t *testing.T) {
 	// get the user cgroup ns
 	log := log.NewTestLogger(t)
 	var wg sync.WaitGroup
-	userCgroupNs := getHostCgroupNs()
+	userCgroupNs := getCommmandCgroupNs("/usr/bin/sleep", []string{"3"})
 	assert.NotNil(t, userCgroupNs)
 	log.Debugf("Detected cgroup namespace for user: %s", userCgroupNs)
 
@@ -306,7 +313,7 @@ func TestHostCgroupNs(t *testing.T) {
 	log := log.NewTestLogger(t)
 	var wg sync.WaitGroup
 
-	userCgroupNs := getHostCgroupNs()
+	userCgroupNs := getCommmandCgroupNs("/usr/bin/sleep", []string{"3"})
 	assert.NotNil(t, userCgroupNs)
 
 	log.Debugf("Detected cgroup namespace for user: %s", userCgroupNs)
@@ -342,4 +349,77 @@ func TestHostCgroupNs(t *testing.T) {
 	} else {
 		log.Debugf("user cgroup namespace: %s, podman cgroup namespace: %s, the same!", userCgroupNs, podmanCgroupNs)
 	}
+}
+
+func TestNamespacePathCgroupNs(t *testing.T) {
+	log := log.NewTestLogger(t)
+	containername1 := fmt.Sprintf("test%s", getTestRandomString(5))
+	//The first container will run with a private namespace that will be created at startup
+	configtemplate1 := fmt.Sprintf(cgroupTemplate, containername1, "private")
+	connector1, config := getConnector(t, configtemplate1)
+
+	container1, err := connector1.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
+	assert.NoError(t, err)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		var containerInput = []byte("sleep 10\n")
+		assert.NoErrorR[int](t)(container1.Write(containerInput))
+	}()
+	//sleeps to wait the first container become ready and attach to its cgroup ns
+	time.Sleep(2 * time.Second)
+
+	var stdoutPid bytes.Buffer
+	cmdGetPid := exec.Command(config.Podman.Path, "ps", "--ns", "--filter", fmt.Sprintf("name=%s", containername1), "--format", "{{.Pid}}")
+	cmdGetPid.Stdout = &stdoutPid
+	cmdGetPid.Run()
+
+	containername2 := fmt.Sprintf("test%s", getTestRandomString(5))
+	//The second one will join the newly created private namespace of the first container
+	namespacePath := fmt.Sprintf("ns:/proc/%s/ns/cgroup", strings.TrimSuffix(stdoutPid.String(), "\n"))
+	configtemplate2 := fmt.Sprintf(cgroupTemplate, containername2, namespacePath)
+	connector2, _ := getConnector(t, configtemplate2)
+
+	container2, err := connector2.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
+	assert.NoError(t, err)
+
+	t.Cleanup(func() {
+		cmd := exec.Command(config.Podman.Path, "container", "rm", containername1)
+		cmd.Run()
+		cmd = exec.Command(config.Podman.Path, "container", "rm", containername2)
+		cmd.Run()
+		assert.NoError(t, container1.Close())
+		assert.NoError(t, container2.Close())
+	})
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		var containerInput = []byte("sleep 5\n")
+		assert.NoErrorR[int](t)(container2.Write(containerInput))
+	}()
+
+	var stdoutContainer1 bytes.Buffer
+	var stdoutContainer2 bytes.Buffer
+
+	cmd1 := exec.Command(config.Podman.Path, "ps", "--ns", "--filter", fmt.Sprintf("name=%s", containername1), "--format", "{{.CGROUPNS}}")
+	cmd1.Stdout = &stdoutContainer1
+	cmd1.Run()
+
+	cmd2 := exec.Command(config.Podman.Path, "ps", "--ns", "--filter", fmt.Sprintf("name=%s", containername2), "--format", "{{.CGROUPNS}}")
+	cmd2.Stdout = &stdoutContainer2
+	cmd2.Run()
+	//check that both the container are running in the same namespace
+	ns1 := strings.TrimSuffix(stdoutContainer1.String(), "\n")
+	ns2 := strings.TrimSuffix(stdoutContainer2.String(), "\n")
+	if ns1 != ns2 {
+		t.Fail()
+	} else {
+		log.Debugf("container 1 namespace: %s, container 2 namespace: %s, they're the same!", ns1, ns2)
+		log.Debugf("Container 2 joined the namespace via namespace path: %s", namespacePath)
+	}
+	wg.Wait()
+
 }

@@ -13,8 +13,7 @@ import (
 	"time"
 )
 
-const testImage = "quay.io/podman/hello:latest:latest"
-const testImageIo = "registry.fedoraproject.org/fedora"
+const testImage = "quay.io/podman/hello:latest"
 const testImageNoTag = "quay.io/podman/hello"
 const testImageNoBaseUrl = "hello:latest"
 const testNotExistingTag = "quay.io/podman/hello:v0"
@@ -27,7 +26,7 @@ type basicInspection struct {
 }
 
 func GetPodmanPath() string {
-	if err := godotenv.Load("env/test.env"); err != nil {
+	if err := godotenv.Load("test/env/test.env"); err != nil {
 		panic(err)
 	}
 	return os.Getenv("PODMAN_PATH")
@@ -54,13 +53,13 @@ func InspectImage(image string) *basicInspection {
 }
 
 // getHostCgroupNs detects the user's cgroup namespace
-func getHostCgroupNs() string {
+func getCommmandCgroupNs(command string, args []string) string {
 	var pid int = 0
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		cmd1 := exec.Command("/usr/bin/sleep", "3")
+		cmd1 := exec.Command(command, args...)
 		cmd1.Start()
 		pid = cmd1.Process.Pid
 		cmd1.Wait()
