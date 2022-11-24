@@ -2,6 +2,7 @@ package podman
 
 import (
 	"arcaflow-engine-deployer-podman/config"
+	"arcaflow-engine-deployer-podman/tests"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -113,7 +114,7 @@ var volumeConfig = `
    "deployment":{
       "host":{
          "Binds":[
-            "./test/volumes:/test"
+            "./tests/volume:/test"
          ]
       }
    },
@@ -124,14 +125,14 @@ var volumeConfig = `
 `
 
 func TestSimpleVolume(t *testing.T) {
-	fileContent, err := os.ReadFile("./test/volumes/test_file.txt")
+	fileContent, err := os.ReadFile("./tests/volume/test_file.txt")
 	assert.Nil(t, err)
 	connector, _ := getConnector(t, volumeConfig)
 
 	cwd, err := os.Getwd()
 	assert.Nil(t, err)
 	//disable selinux on the test folder in order to make the file readable from within the container
-	cmd := exec.Command("chcon", "-Rt", "svirt_sandbox_file_t", fmt.Sprintf("%s/test/volumes", cwd))
+	cmd := exec.Command("chcon", "-Rt", "svirt_sandbox_file_t", fmt.Sprintf("%s/tests/volume", cwd))
 	err = cmd.Run()
 	assert.Nil(t, err)
 
@@ -271,7 +272,7 @@ func TestPrivateCgroupNs(t *testing.T) {
 	// get the user cgroup ns
 	log := log.NewTestLogger(t)
 	var wg sync.WaitGroup
-	userCgroupNs := getCommmandCgroupNs("/usr/bin/sleep", []string{"3"})
+	userCgroupNs := tests.GetCommmandCgroupNs("/usr/bin/sleep", []string{"3"})
 	assert.NotNil(t, userCgroupNs)
 	log.Debugf("Detected cgroup namespace for user: %s", userCgroupNs)
 
@@ -298,7 +299,7 @@ func TestPrivateCgroupNs(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	var podmanCgroupNs = getPomanCgroupNs(config.Podman.Path, containername)
+	var podmanCgroupNs = tests.GetPodmanCgroupNs(config.Podman.Path, containername)
 	wg.Wait()
 
 	// if the user's namespace is equal to the podman one the test must fail
@@ -314,7 +315,7 @@ func TestHostCgroupNs(t *testing.T) {
 	log := log.NewTestLogger(t)
 	var wg sync.WaitGroup
 
-	userCgroupNs := getCommmandCgroupNs("/usr/bin/sleep", []string{"3"})
+	userCgroupNs := tests.GetCommmandCgroupNs("/usr/bin/sleep", []string{"3"})
 	assert.NotNil(t, userCgroupNs)
 
 	log.Debugf("Detected cgroup namespace for user: %s", userCgroupNs)
@@ -341,7 +342,7 @@ func TestHostCgroupNs(t *testing.T) {
 	// waits for the container to become ready
 	time.Sleep(2 * time.Second)
 
-	var podmanCgroupNs = getPomanCgroupNs(config.Podman.Path, containername)
+	var podmanCgroupNs = tests.GetPodmanCgroupNs(config.Podman.Path, containername)
 	assert.NotNil(t, podmanCgroupNs)
 	wg.Wait()
 	// if the container is running in a different cgroup namespace than the user the test must fail

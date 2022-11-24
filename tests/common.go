@@ -1,4 +1,4 @@
-package podman
+package tests
 
 import (
 	"bytes"
@@ -13,12 +13,12 @@ import (
 	"time"
 )
 
-const testImage = "quay.io/podman/hello:latest"
-const testImageNoTag = "quay.io/podman/hello"
-const testImageNoBaseUrl = "hello:latest"
-const testNotExistingTag = "quay.io/podman/hello:v0"
-const testNotExistingImage = "quay.io/podman/imatestidonotexist:latest"
-const testNotExistingImageNoBaseUrl = "imatestidonotexist:latest"
+const TestImage = "quay.io/podman/hello:latest"
+const TestImageNoTag = "quay.io/podman/hello"
+const TestImageNoBaseUrl = "hello:latest"
+const TestNotExistingTag = "quay.io/podman/hello:v0"
+const TestNotExistingImage = "quay.io/podman/imatestidonotexist:latest"
+const TestNotExistingImageNoBaseUrl = "imatestidonotexist:latest"
 
 type basicInspection struct {
 	Architecture string `json:"Architecture"`
@@ -26,9 +26,11 @@ type basicInspection struct {
 }
 
 func GetPodmanPath() string {
-	if err := godotenv.Load("test/env/test.env"); err != nil {
+
+	if err := godotenv.Load("../tests/env/test.env"); err != nil {
 		panic(err)
 	}
+
 	return os.Getenv("PODMAN_PATH")
 }
 
@@ -52,8 +54,8 @@ func InspectImage(image string) *basicInspection {
 	return &objects[0]
 }
 
-// getHostCgroupNs detects the user's cgroup namespace
-func getCommmandCgroupNs(command string, args []string) string {
+// GetHostCgroupNs detects the user's cgroup namespace
+func GetCommmandCgroupNs(command string, args []string) string {
 	var pid int = 0
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -83,8 +85,8 @@ func getCommmandCgroupNs(command string, args []string) string {
 	return userCgroupNs
 }
 
-// getPomanCgroupNs  detects the running container cgroup namespace
-func getPomanCgroupNs(podmanPath string, containerName string) string {
+// GtPomanCgroupNs  detects the running container cgroup namespace
+func GetPodmanCgroupNs(podmanPath string, containerName string) string {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	var podmanCgroupNs string
