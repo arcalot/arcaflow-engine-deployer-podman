@@ -24,8 +24,11 @@ func (c Connector) Deploy(ctx context.Context, image string) (deployer.Plugin, e
 	if err := c.pullImage(ctx, image); err != nil {
 		return nil, err
 	}
-
-	cliWrapper := cli_wrapper.NewCliWrapper("/usr/bin/podman")
+	if c.config.Podman.Path == "" {
+		c.logger.Errorf("oops, neither podman -> path provided in configuration nor binary found in $PATH")
+		panic("oops, neither podman -> path provided in configuration nor binary found in $PATH")
+	}
+	cliWrapper := cli_wrapper.NewCliWrapper(c.config.Podman.Path)
 
 	containerConfig := c.unwrapContainerConfig()
 	hostConfig := c.unwrapHostConfig()

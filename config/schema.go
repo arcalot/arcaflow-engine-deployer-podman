@@ -2,7 +2,9 @@ package config
 
 import (
 	"arcaflow-engine-deployer-podman/util"
+	"fmt"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
+	"os/exec"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
@@ -12,8 +14,11 @@ import (
 )
 
 func podmanGetDefaultPath() string {
-	// TODO: implement a better logic to resolve podman binary
-	return "/usr/bin/podman"
+	path, err := exec.LookPath("podman")
+	if err != nil {
+		fmt.Errorf("podman binary not found in $PATH, please provide it in configuration")
+	}
+	return path
 }
 
 // Schema describes the deployment options of the Docker deployment mechanism.
