@@ -14,7 +14,6 @@ import (
 	"testing"
 	"time"
 
-	"arcaflow-engine-deployer-podman/config"
 	"arcaflow-engine-deployer-podman/tests"
 	"go.arcalot.io/assert"
 	"go.arcalot.io/log"
@@ -33,7 +32,7 @@ func getTestRandomString(n int) string {
 	return string(b)
 }
 
-func getConnector(t *testing.T, configJson string) (deployer.Connector, *config.Config) {
+func getConnector(t *testing.T, configJson string) (deployer.Connector, *Config) {
 	var config any
 	if err := json.Unmarshal([]byte(configJson), &config); err != nil {
 		t.Fatal(err)

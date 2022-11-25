@@ -1,7 +1,6 @@
 package podman
 
 import (
-	"arcaflow-engine-deployer-podman/config"
 	args "arcaflow-engine-deployer-podman/internal/args_builder"
 	cli_wrapper2 "arcaflow-engine-deployer-podman/internal/cli_wrapper"
 	"context"
@@ -13,7 +12,7 @@ import (
 )
 
 type Connector struct {
-	config *config.Config
+	config *Config
 	logger log.Logger
 	podman cli_wrapper2.CliWrapper
 }
@@ -57,10 +56,10 @@ func (c Connector) Deploy(ctx context.Context, image string) (deployer.Plugin, e
 }
 
 func (c *Connector) pullImage(ctx context.Context, image string) error {
-	if c.config.Deployment.ImagePullPolicy == config.ImagePullPolicyNever {
+	if c.config.Deployment.ImagePullPolicy == ImagePullPolicyNever {
 		return nil
 	}
-	if c.config.Deployment.ImagePullPolicy == config.ImagePullPolicyIfNotPresent {
+	if c.config.Deployment.ImagePullPolicy == ImagePullPolicyIfNotPresent {
 		imageExists, err := c.podman.ImageExists(image)
 		if err != nil {
 			return err

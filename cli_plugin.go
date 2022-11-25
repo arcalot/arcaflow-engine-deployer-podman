@@ -5,7 +5,6 @@ import (
 	"io"
 	"sync"
 
-	"arcaflow-engine-deployer-podman/config"
 	"go.arcalot.io/log"
 )
 
@@ -14,7 +13,7 @@ type CliPlugin struct {
 	lock           *sync.Mutex
 	containerImage string
 	readIndex      int64
-	config         *config.Config
+	config         *Config
 	logger         log.Logger
 	stdin          io.WriteCloser
 	stdout         io.ReadCloser

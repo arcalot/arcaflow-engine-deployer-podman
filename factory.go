@@ -1,7 +1,6 @@
 package podman
 
 import (
-	"arcaflow-engine-deployer-podman/config"
 	"arcaflow-engine-deployer-podman/internal/cli_wrapper"
 	"go.arcalot.io/log"
 	"go.flow.arcalot.io/deployer"
@@ -9,7 +8,7 @@ import (
 )
 
 // NewFactory creates a new factory for the Docker deployer.
-func NewFactory() deployer.ConnectorFactory[*config.Config] {
+func NewFactory() deployer.ConnectorFactory[*Config] {
 	return &factory{}
 }
 
@@ -20,11 +19,11 @@ func (f factory) ID() string {
 	return "docker"
 }
 
-func (f factory) ConfigurationSchema() *schema.TypedScopeSchema[*config.Config] {
-	return config.Schema
+func (f factory) ConfigurationSchema() *schema.TypedScopeSchema[*Config] {
+	return Schema
 }
 
-func (f factory) Create(config *config.Config, logger log.Logger) (deployer.Connector, error) {
+func (f factory) Create(config *Config, logger log.Logger) (deployer.Connector, error) {
 	podman := cli_wrapper.NewCliWrapper(config.Podman.Path)
 	return Connector{
 		config: config,

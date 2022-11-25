@@ -1,4 +1,4 @@
-package config
+package podman
 
 import (
 	"github.com/docker/docker/api/types/container"
@@ -36,6 +36,8 @@ type Podman struct {
 	Path          string `json:"path"`
 	ContainerName string `json:"containerName"`
 	CgroupNs      string `json:"cgroupNs"`
+	NetworkMode   string `json:"networkMode"`
+	NetworkPort   string `json:"networkPort"`
 }
 
 // Deployment contains the information about deploying the plugin.
