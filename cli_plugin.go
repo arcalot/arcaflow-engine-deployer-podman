@@ -5,7 +5,6 @@ import (
 	"arcaflow-engine-deployer-podman/config"
 	"bufio"
 	"bytes"
-	"fmt"
 	"go.arcalot.io/log"
 	"io"
 	"sync"
@@ -49,7 +48,7 @@ func (p *CliPlugin) readStdout(r io.Reader) {
 
 // TODO: unwrap the whole config
 
-func (p *CliPlugin) _Write(b []byte) (n int, err error) {
+func (p *CliPlugin) Write(b []byte) (n int, err error) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
@@ -64,7 +63,7 @@ func (p *CliPlugin) _Write(b []byte) (n int, err error) {
 	if err != nil {
 		return 0, err
 	}
-	//p.stdoutBuffer.Write(stdoutBuf)
+	p.stdoutBuffer.Write(stdoutBuf)
 	/*	if err := cmd.Wait(); err != nil {
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			return 0, exiterr
@@ -74,7 +73,7 @@ func (p *CliPlugin) _Write(b []byte) (n int, err error) {
 	return writtenBytes, nil
 }
 
-func (p *CliPlugin) Write(b []byte) (n int, err error) {
+func (p *CliPlugin) _Write(b []byte) (n int, err error) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 	buffer := new(bytes.Buffer)
@@ -85,35 +84,17 @@ func (p *CliPlugin) Write(b []byte) (n int, err error) {
 	return
 }
 
-func (p *CliPlugin) _Read(b []byte) (n int, err error) {
-	if p.readIndex >= int64(len(p.stdoutBuffer.Bytes())) {
-		err = io.EOF
-		return
-	}
-	n = copy(b, p.stdoutBuffer.Bytes()[p.readIndex:])
-	p.readIndex += int64(n)
-	return
-}
-
 func (p *CliPlugin) Read(b []byte) (n int, err error) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
-	reader := bufio.NewReader(p.stdout)
-	go p.readStdout(reader)
-	return 0, nil
+	defer p.wrapper.ClearBuffer()
+	buf := p.wrapper.GetStdoutData()
 
-}
-
-func handleReader(reader *bufio.Reader) {
-	for {
-		str, err := reader.ReadString('\n')
-		if err != nil {
-			break
-		}
-
-		fmt.Print(str)
-
+	if len(buf) == 0 {
+		return 0, io.EOF
 	}
+	copy(b, buf)
+	return len(b), nil
 }
 
 func (p *CliPlugin) Close() error {

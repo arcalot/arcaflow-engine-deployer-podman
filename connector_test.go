@@ -63,12 +63,11 @@ func TestSimpleInOut(t *testing.T) {
 	t.Cleanup(func() {
 		assert.NoError(t, plugin.Close())
 	})
-
 	var containerInput = []byte("input abc\n")
-	assert.NoErrorR[int](t)(plugin.Write(containerInput))
-	assert.NoErrorR[int](t)(plugin.Write(containerInput))
 	buf := new(strings.Builder)
+	assert.NoErrorR[int](t)(plugin.Write(containerInput))
 	assert.NoErrorR[int64](t)(io.Copy(buf, plugin))
+	fmt.Println(buf.String())
 	assert.Contains(t, buf.String(), "This is what input was received: \"abc\"")
 }
 

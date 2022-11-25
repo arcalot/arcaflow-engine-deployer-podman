@@ -13,4 +13,6 @@ type CliWrapper interface {
 		containerName string,
 		args []string,
 	) (io.WriteCloser, io.ReadCloser, io.ReadCloser, *exec.Cmd, error)
+	GetStdoutData() []byte
+	ClearBuffer()
 }

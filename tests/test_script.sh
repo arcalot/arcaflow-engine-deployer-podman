@@ -2,9 +2,8 @@
 
 
 test_input () {
-  sleep 5
   echo This is what input was received: \"$1\"
-  read -r action
+  read -r
   exit 0
 }
 
