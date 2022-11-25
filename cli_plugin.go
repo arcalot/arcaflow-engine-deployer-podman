@@ -8,6 +8,7 @@ import (
 	"go.arcalot.io/log"
 	"io"
 	"sync"
+	"time"
 )
 
 type CliPlugin struct {
@@ -49,39 +50,13 @@ func (p *CliPlugin) readStdout(r io.Reader) {
 // TODO: unwrap the whole config
 
 func (p *CliPlugin) Write(b []byte) (n int, err error) {
-	p.lock.Lock()
-	defer p.lock.Unlock()
 
-	if err != nil {
-		return 0, err
-	}
 	writtenBytes, err := p.stdin.Write(b)
 	if err != nil {
 		return 0, err
 	}
-
-	if err != nil {
-		return 0, err
-	}
-	p.stdoutBuffer.Write(stdoutBuf)
-	/*	if err := cmd.Wait(); err != nil {
-		if exiterr, ok := err.(*exec.ExitError); ok {
-			return 0, exiterr
-		}
-		return 0, err
-	}*/
+	time.Sleep(500 * time.Millisecond)
 	return writtenBytes, nil
-}
-
-func (p *CliPlugin) _Write(b []byte) (n int, err error) {
-	p.lock.Lock()
-	defer p.lock.Unlock()
-	buffer := new(bytes.Buffer)
-	buffer.Read(b)
-	_n, _err := io.Copy(p.stdin, buffer)
-	err = _err
-	n = int(_n)
-	return
 }
 
 func (p *CliPlugin) Read(b []byte) (n int, err error) {

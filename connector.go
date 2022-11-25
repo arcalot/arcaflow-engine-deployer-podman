@@ -36,6 +36,7 @@ func (c Connector) Deploy(ctx context.Context, image string) (deployer.Plugin, e
 		SetVolumes(hostConfig.Binds).
 		SetCgroupNs(c.config.Podman.CgroupNs)
 	stdin, stdout, _, _, err := cliWrapper.Deploy(image, image, commandArgs)
+
 	if err != nil {
 		return nil, err
 	}
@@ -48,6 +49,7 @@ func (c Connector) Deploy(ctx context.Context, image string) (deployer.Plugin, e
 		stdin:          stdin,
 		stdout:         stdout,
 	}
+
 	return &cliPlugin, nil
 }
 

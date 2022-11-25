@@ -2,8 +2,9 @@
 
 
 test_input () {
-  echo This is what input was received: \"$1\"
-  read -r
+  echo pong $1
+  read -r command value
+  echo end $value
   exit 0
 }
 
@@ -25,7 +26,7 @@ test_sleep () {
 echo Enter a test and a parameter:
 read -r action value
 case $action in
-  input)
+  ping)
     test_input $value
     ;;
   env)

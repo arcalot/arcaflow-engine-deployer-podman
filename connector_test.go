@@ -63,12 +63,16 @@ func TestSimpleInOut(t *testing.T) {
 	t.Cleanup(func() {
 		assert.NoError(t, plugin.Close())
 	})
-	var containerInput = []byte("input abc\n")
+	var containerInput = []byte("ping abc\n")
 	buf := new(strings.Builder)
 	assert.NoErrorR[int](t)(plugin.Write(containerInput))
 	assert.NoErrorR[int64](t)(io.Copy(buf, plugin))
+	assert.Contains(t, buf.String(), "pong abc")
+	buf.Reset()
+	assert.NoErrorR[int](t)(plugin.Write(containerInput))
+	assert.NoErrorR[int64](t)(io.Copy(buf, plugin))
+	assert.Contains(t, buf.String(), "end abc")
 	fmt.Println(buf.String())
-	assert.Contains(t, buf.String(), "This is what input was received: \"abc\"")
 }
 
 var envConfig = `

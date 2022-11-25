@@ -9,7 +9,6 @@ import (
 	"io"
 	"os/exec"
 	"strings"
-	"time"
 )
 
 type cliWrapper struct {
@@ -111,39 +110,16 @@ func (p *cliWrapper) Deploy(image string, containerName string, args []string) (
 	if err := cmd.Start(); err != nil {
 		return nil, nil, nil, nil, errors.New(err.Error())
 	}
-	time.Sleep(5 * time.Second)
 	go p.readStdout(stdout)
 	return stdin, stdout, stderr, cmd, nil
 }
 
-func (p *cliWrapper) _readStdout(stdout io.ReadCloser) {
+func (p *cliWrapper) readStdout(stdout io.ReadCloser) {
 	reader := bufio.NewScanner(stdout)
 	for reader.Scan() {
 		p.stdoutBuffer.Write(reader.Bytes())
 	}
 
-}
-func (p *cliWrapper) readStdout(stdout io.ReadCloser) {
-	writer := bufio.NewWriter(&p.stdoutBuffer)
-	var out []byte
-	buf := make([]byte, 1024, 1024)
-	for {
-		n, err := stdout.Read(buf[:])
-		if n > 0 {
-			d := buf[:n]
-			out = append(out, d...)
-			_, err := writer.Write(d)
-			if err != nil {
-				return
-			}
-		}
-		if err != nil {
-			if err == io.EOF {
-				err = nil
-			}
-			return
-		}
-	}
 }
 
 func (p *cliWrapper) GetStdoutData() []byte {
