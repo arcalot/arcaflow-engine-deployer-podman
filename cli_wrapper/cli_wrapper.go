@@ -115,14 +115,14 @@ func (p *cliWrapper) Deploy(image string, containerName string, args []string) (
 }
 
 func (p *cliWrapper) readStdout(stdout io.ReadCloser) {
-	reader := bufio.NewScanner(stdout)
-	for reader.Scan() {
-		p.stdoutBuffer.Write(reader.Bytes())
+	writer := bufio.NewWriter(&p.stdoutBuffer)
+	if _, err := io.Copy(writer, stdout); err != nil {
+		return
 	}
-
 }
 
 func (p *cliWrapper) GetStdoutData() []byte {
+
 	bufBytes := p.stdoutBuffer.Bytes()
 	return bufBytes
 }

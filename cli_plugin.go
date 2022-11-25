@@ -3,7 +3,6 @@ package podman
 import (
 	"arcaflow-engine-deployer-podman/cli_wrapper"
 	"arcaflow-engine-deployer-podman/config"
-	"bufio"
 	"bytes"
 	"go.arcalot.io/log"
 	"io"
@@ -21,30 +20,6 @@ type CliPlugin struct {
 	logger         log.Logger
 	stdin          io.WriteCloser
 	stdout         io.ReadCloser
-}
-
-func (p *CliPlugin) readStdout(r io.Reader) {
-	buffer := bytes.Buffer{}
-	writer := bufio.NewWriter(&buffer)
-	var out []byte
-	buf := make([]byte, 1024, 1024)
-	for {
-		n, err := r.Read(buf[:])
-		if n > 0 {
-			d := buf[:n]
-			out = append(out, d...)
-			_, err := writer.Write(d)
-			if err != nil {
-				return
-			}
-		}
-		if err != nil {
-			if err == io.EOF {
-				err = nil
-			}
-			return
-		}
-	}
 }
 
 // TODO: unwrap the whole config
