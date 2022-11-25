@@ -1,9 +1,9 @@
 package podman
 
 import (
-	args "arcaflow-engine-deployer-podman/args_builder"
-	"arcaflow-engine-deployer-podman/cli_wrapper"
 	"arcaflow-engine-deployer-podman/config"
+	args "arcaflow-engine-deployer-podman/internal/args_builder"
+	cli_wrapper2 "arcaflow-engine-deployer-podman/internal/cli_wrapper"
 	"context"
 	"github.com/docker/docker/api/types/container"
 	"go.arcalot.io/log"
@@ -15,7 +15,7 @@ import (
 type Connector struct {
 	config *config.Config
 	logger log.Logger
-	podman cli_wrapper.CliWrapper
+	podman cli_wrapper2.CliWrapper
 }
 
 var tagRegexp = regexp.MustCompile("^[a-zA-Z0-9.-]$")
@@ -28,7 +28,7 @@ func (c Connector) Deploy(ctx context.Context, image string) (deployer.Plugin, e
 		c.logger.Errorf("oops, neither podman -> path provided in configuration nor binary found in $PATH")
 		panic("oops, neither podman -> path provided in configuration nor binary found in $PATH")
 	}
-	cliWrapper := cli_wrapper.NewCliWrapper(c.config.Podman.Path)
+	cliWrapper := cli_wrapper2.NewCliWrapper(c.config.Podman.Path)
 
 	containerConfig := c.unwrapContainerConfig()
 	hostConfig := c.unwrapHostConfig()

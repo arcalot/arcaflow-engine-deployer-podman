@@ -1,14 +1,13 @@
 package cli_wrapper
 
 import (
+	"arcaflow-engine-deployer-podman/internal/util"
 	"bytes"
 	"errors"
 	"fmt"
 	"io"
 	"os/exec"
 	"strings"
-
-	"arcaflow-engine-deployer-podman/util"
 )
 
 type cliWrapper struct {

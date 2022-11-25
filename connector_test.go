@@ -34,12 +34,10 @@ func getTestRandomString(n int) string {
 }
 
 func getConnector(t *testing.T, configJson string) (deployer.Connector, *config.Config) {
-
 	var config any
 	if err := json.Unmarshal([]byte(configJson), &config); err != nil {
 		t.Fatal(err)
 	}
-
 	factory := NewFactory()
 	schema := factory.ConfigurationSchema()
 	unserializedConfig, err := schema.UnserializeType(config)
@@ -56,27 +54,6 @@ var inOutConfig = `
    }
 }
 `
-
-func readOutputUntil(t *testing.T, plugin deployer.Plugin, lookForOutput string) []byte {
-	var n int
-	readBuffer := make([]byte, 10240)
-	for {
-		currentBuffer := make([]byte, 1024)
-		readBytes, err := plugin.Read(currentBuffer)
-		if err != nil {
-			if err != io.EOF {
-				t.Fatalf("error while reading stdout: %s", err.Error())
-			} else {
-				return readBuffer[:n]
-			}
-		}
-		copy(readBuffer[n:], currentBuffer[:readBytes])
-		n += readBytes
-		if strings.Contains(string(readBuffer[:n]), lookForOutput) {
-			return readBuffer[:n]
-		}
-	}
-}
 
 func TestSimpleInOut(t *testing.T) {
 	pongStr := "pong abc"
@@ -455,4 +432,26 @@ func TestNamespacePathCgroupNs(t *testing.T) {
 	}
 	wg.Wait()
 
+}
+
+// readOutputUntil helper function, reads from plugin (io.Reader) until finds lookforOutput
+func readOutputUntil(t *testing.T, plugin deployer.Plugin, lookForOutput string) []byte {
+	var n int
+	readBuffer := make([]byte, 10240)
+	for {
+		currentBuffer := make([]byte, 1024)
+		readBytes, err := plugin.Read(currentBuffer)
+		if err != nil {
+			if err != io.EOF {
+				t.Fatalf("error while reading stdout: %s", err.Error())
+			} else {
+				return readBuffer[:n]
+			}
+		}
+		copy(readBuffer[n:], currentBuffer[:readBytes])
+		n += readBytes
+		if strings.Contains(string(readBuffer[:n]), lookForOutput) {
+			return readBuffer[:n]
+		}
+	}
 }

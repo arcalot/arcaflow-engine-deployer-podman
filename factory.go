@@ -1,8 +1,8 @@
 package podman
 
 import (
-	"arcaflow-engine-deployer-podman/cli_wrapper"
 	"arcaflow-engine-deployer-podman/config"
+	"arcaflow-engine-deployer-podman/internal/cli_wrapper"
 	"go.arcalot.io/log"
 	"go.flow.arcalot.io/deployer"
 	"go.flow.arcalot.io/pluginsdk/schema"

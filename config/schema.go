@@ -1,7 +1,7 @@
 package config
 
 import (
-	"arcaflow-engine-deployer-podman/util"
+	"arcaflow-engine-deployer-podman/internal/util"
 	"fmt"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"os/exec"
@@ -82,6 +82,26 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 			"cgroupNs": schema.NewPropertySchema(
 				schema.NewStringSchema(nil, nil, regexp.MustCompile("^host|ns\\:\\/proc\\/\\d+\\/ns\\/cgroup|container\\:.+|private$")),
 				schema.NewDisplayValue(schema.PointerTo("CGroup namespace"), schema.PointerTo("Provides the Cgroup Namespace settings for the container"), nil),
+				false,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+			),
+			"networkMode": schema.NewPropertySchema(
+				schema.NewStringSchema(nil, nil, regexp.MustCompile("^\\d+\\:\\d+$")),
+				schema.NewDisplayValue(schema.PointerTo("Port mapping"), schema.PointerTo("Provides network port mapping to the container"), nil),
+				false,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+			),
+			"networkPort": schema.NewPropertySchema(
+				schema.NewStringSchema(nil, nil, regexp.MustCompile("^\\d+\\:\\d+$")),
+				schema.NewDisplayValue(schema.PointerTo("Port mapping"), schema.PointerTo("Provides network port mapping to the container"), nil),
 				false,
 				nil,
 				nil,

@@ -39,3 +39,10 @@ func (a *argsBuilder) SetContainerName(name string) ArgsBuilder {
 	}
 	return a
 }
+
+func (a *argsBuilder) SetPort(port string) ArgsBuilder {
+	if port != "" {
+		*a.commandArgs = append(*a.commandArgs, "-p", port)
+	}
+	return a
+}
