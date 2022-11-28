@@ -26,7 +26,7 @@ test_sleep () {
 test_network () {
   case $1 in
     host)
-    /usr/sbin/ifconfig
+    /usr/sbin/ifconfig | grep -P "^.+:\s+.+$" | awk '{ gsub(":","");print $1 }'
     exit 0
     ;;
     bridge)

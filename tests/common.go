@@ -15,19 +15,18 @@ import (
 
 const TestImage = "quay.io/podman/hello:latest"
 const TestImageNoTag = "quay.io/podman/hello"
-const TestImageNoBaseUrl = "hello:latest"
+const TestImageNoBaseURL = "hello:latest"
 const TestNotExistingTag = "quay.io/podman/hello:v0"
 const TestNotExistingImage = "quay.io/podman/imatestidonotexist:latest"
-const TestNotExistingImageNoBaseUrl = "imatestidonotexist:latest"
+const TestNotExistingImageNoBaseURL = "imatestidonotexist:latest"
 
-type basicInspection struct {
+type BasicInspection struct {
 	Architecture string `json:"Architecture"`
 	Os           string `json:"Os"`
 }
 
 func GetPodmanPath() string {
-
-	if err := godotenv.Load("../tests/env/test.env"); err != nil {
+	if err := godotenv.Load("../../tests/env/test.env"); err != nil {
 		panic(err)
 	}
 
@@ -39,12 +38,12 @@ func RemoveImage(image string) {
 	cmd.Run()
 }
 
-func InspectImage(image string) *basicInspection {
+func InspectImage(image string) *BasicInspection {
 	cmd := exec.Command(GetPodmanPath(), "inspect", image)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Run()
-	var objects []basicInspection
+	var objects []BasicInspection
 	if err := json.Unmarshal(out.Bytes(), &objects); err != nil {
 		panic(err)
 	}
@@ -54,9 +53,9 @@ func InspectImage(image string) *basicInspection {
 	return &objects[0]
 }
 
-// GetHostCgroupNs detects the user's cgroup namespace
+// GetCommmandCgroupNs detects the user's cgroup namespace
 func GetCommmandCgroupNs(command string, args []string) string {
-	var pid int = 0
+	var pid int
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
@@ -78,8 +77,8 @@ func GetCommmandCgroupNs(command string, args []string) string {
 		userCgroupNs = strings.Split(stdout.String(), " ")[10]
 	}()
 	wg.Wait()
-	//removes linux cgroup notation
-	regex := regexp.MustCompile("cgroup\\:\\[(\\d+)\\]")
+	// removes linux cgroup notation
+	regex := regexp.MustCompile("cgroup:\\[(\\d+)\\]")
 	userCgroupNs = regex.ReplaceAllString(userCgroupNs, "$1")
 	userCgroupNs = strings.TrimSuffix(userCgroupNs, "\n")
 	return userCgroupNs

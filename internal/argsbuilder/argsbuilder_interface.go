@@ -1,4 +1,4 @@
-package args_builder
+package argsbuilder
 
 type ArgsBuilder interface {
 	SetEnv(env []string) ArgsBuilder

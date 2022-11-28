@@ -80,7 +80,7 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 				nil,
 			),
 			"cgroupNs": schema.NewPropertySchema(
-				schema.NewStringSchema(nil, nil, regexp.MustCompile("^host|ns\\:\\/proc\\/\\d+\\/ns\\/cgroup|container\\:.+|private$")),
+				schema.NewStringSchema(nil, nil, regexp.MustCompile("^host|ns:/proc/\\d+/ns/cgroup|container:.+|private$")),
 				schema.NewDisplayValue(schema.PointerTo("CGroup namespace"), schema.PointerTo("Provides the Cgroup Namespace settings for the container"), nil),
 				false,
 				nil,
@@ -194,7 +194,7 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 				nil,
 			),
 			"Env": schema.NewPropertySchema(
-				schema.NewListSchema(schema.NewStringSchema(schema.IntPointer(1), schema.IntPointer(32760), regexp.MustCompile("^.+\\=.+$")), nil, nil),
+				schema.NewListSchema(schema.NewStringSchema(schema.IntPointer(1), schema.IntPointer(32760), regexp.MustCompile("^.+=.+$")), nil, nil),
 				schema.NewDisplayValue(schema.PointerTo("Environment variables"), schema.PointerTo("Environment variables to set on the plugin container."), nil),
 				false,
 				nil,
@@ -229,7 +229,7 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 		"HostConfig",
 		map[string]*schema.PropertySchema{
 			"Binds": schema.NewPropertySchema(
-				schema.NewListSchema(schema.NewStringSchema(schema.IntPointer(1), schema.IntPointer(32760), regexp.MustCompile("^.+\\:.+$")), nil, nil),
+				schema.NewListSchema(schema.NewStringSchema(schema.IntPointer(1), schema.IntPointer(32760), regexp.MustCompile("^.+:.+$")), nil, nil),
 				schema.NewDisplayValue(schema.PointerTo("Volume Bindings"), schema.PointerTo("Volumes"), nil),
 				false,
 				nil,

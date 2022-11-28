@@ -1,22 +1,26 @@
-package cli_wrapper
+package cliwrapper
 
 import (
 	"arcaflow-engine-deployer-podman/internal/util"
 	"bytes"
 	"errors"
 	"fmt"
+	"go.arcalot.io/log"
 	"io"
 	"os/exec"
 	"strings"
 )
 
 type cliWrapper struct {
-	PodmanFullPath string
+	podmanFullPath string
+	deployCommand  *exec.Cmd
+	logger         log.Logger
 }
 
-func NewCliWrapper(fullPath string) CliWrapper {
+func NewCliWrapper(fullPath string, logger log.Logger) CliWrapper {
 	return &cliWrapper{
-		PodmanFullPath: fullPath,
+		podmanFullPath: fullPath,
+		logger:         logger,
 	}
 }
 
@@ -58,7 +62,7 @@ func (p *cliWrapper) commandSetContainerName(command *[]string, name string) {
 
 func (p *cliWrapper) ImageExists(image string) (*bool, error) {
 	image = p.decorateImageName(image)
-	cmd := exec.Command(p.PodmanFullPath, "image", "ls", "--format", "{{.Repository}}:{{.Tag}}")
+	cmd := exec.Command(p.podmanFullPath, "image", "ls", "--format", "{{.Repository}}:{{.Tag}}")
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	if err := cmd.Run(); err != nil {
@@ -77,7 +81,7 @@ func (p *cliWrapper) PullImage(image string, platform *string) error {
 	}
 	image = p.decorateImageName(image)
 	commandArgs = append(commandArgs, image)
-	cmd := exec.Command(p.PodmanFullPath, commandArgs...)
+	cmd := exec.Command(p.podmanFullPath, commandArgs...)
 	var out bytes.Buffer
 	cmd.Stderr = &out
 	if err := cmd.Run(); err != nil {
@@ -86,27 +90,43 @@ func (p *cliWrapper) PullImage(image string, platform *string) error {
 	return nil
 }
 
-func (p *cliWrapper) Deploy(image string, containerName string, args []string) (io.WriteCloser, io.ReadCloser, io.ReadCloser, *exec.Cmd, error) {
+func (p *cliWrapper) Deploy(image string, args []string) (io.WriteCloser, io.ReadCloser, error) {
 	image = p.decorateImageName(image)
 	args = append(args, image)
-	cmd := exec.Command(p.PodmanFullPath, args...)
-	stdin, err := cmd.StdinPipe()
+	p.deployCommand = exec.Command(p.podmanFullPath, args...)
+	stdin, err := p.deployCommand.StdinPipe()
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return nil, nil, err
+	}
+	stdout, err := p.deployCommand.StdoutPipe()
+	if err != nil {
+		return nil, nil, err
 	}
 
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return nil, nil, nil, nil, err
+	if err := p.deployCommand.Start(); err != nil {
+		return nil, nil, errors.New(err.Error())
 	}
+	return stdin, stdout, nil
+}
 
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		return nil, nil, nil, nil, err
-	}
+func (p *cliWrapper) KillAndWait(containerName string) error {
 
-	if err := cmd.Start(); err != nil {
-		return nil, nil, nil, nil, errors.New(err.Error())
+	if p.deployCommand != nil {
+		cmdKill := exec.Command(p.podmanFullPath, "kill", containerName)
+		if err := cmdKill.Run(); err != nil {
+			p.logger.Warningf("failed to kill pod %s, probably the execution terminated earlier", containerName)
+		}
+		if err := p.deployCommand.Wait(); err != nil {
+			p.logger.Warningf("failed to wait for pod %s, probably the execution terminated and pipes closed.", containerName)
+		}
+		var cmdRmContainerStderr bytes.Buffer
+		cmdRmContainer := exec.Command(p.podmanFullPath, "rm", "--force", containerName)
+		cmdRmContainer.Stderr = &cmdRmContainerStderr
+		if err := cmdRmContainer.Run(); err != nil {
+			p.logger.Errorf("failed to remove container %s: %s", containerName, cmdRmContainerStderr.String())
+		} else {
+			p.logger.Infof("successfully removed container %s", containerName)
+		}
 	}
-	return stdin, stdout, stderr, cmd, nil
+	return nil
 }

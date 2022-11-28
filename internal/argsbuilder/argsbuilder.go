@@ -1,4 +1,4 @@
-package args_builder
+package argsbuilder
 
 import (
 	"strings"

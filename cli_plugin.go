@@ -1,17 +1,15 @@
 package podman
 
 import (
-	"arcaflow-engine-deployer-podman/internal/cli_wrapper"
-	"io"
-	"sync"
-
+	"arcaflow-engine-deployer-podman/internal/cliwrapper"
 	"go.arcalot.io/log"
+	"io"
 )
 
 type CliPlugin struct {
-	wrapper        cli_wrapper.CliWrapper
-	lock           *sync.Mutex
+	wrapper        cliwrapper.CliWrapper
 	containerImage string
+	containerName  string
 	readIndex      int64
 	config         *Config
 	logger         log.Logger
@@ -30,9 +28,8 @@ func (p *CliPlugin) Read(b []byte) (n int, err error) {
 }
 
 func (p *CliPlugin) Close() error {
-	p.lock.Lock()
-	defer p.lock.Unlock()
-	p.stdout.Close()
-	p.stdin.Close()
+	if err := p.wrapper.KillAndWait(p.containerName); err != nil {
+		return err
+	}
 	return nil
 }
