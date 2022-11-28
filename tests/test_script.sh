@@ -23,6 +23,27 @@ test_sleep () {
   exit 0
 }
 
+test_network () {
+  case $1 in
+    host)
+    /usr/sbin/ifconfig
+    exit 0
+    ;;
+    bridge)
+    IP_ADDRESS=`/usr/sbin/ifconfig testif0 | /usr/bin/grep inet | /usr/bin/awk '{ print $2 }'`
+    MAC=`/usr/sbin/ifconfig testif0 | /usr/bin/grep ether | /usr/bin/awk '{ print $2 }'`
+    echo "$IP_ADDRESS;$MAC"
+    exit 0
+    ;;
+    none)
+    IFACE_COUNT=`/usr/sbin/ifconfig -a |/usr/bin/grep flags|/usr/bin/wc -l`
+    IFACE=`/usr/sbin/ifconfig -a | /usr/bin/grep flags | /usr/bin/awk '{ gsub (/\:/,"");print $1}'`
+    echo "$IFACE_COUNT;$IFACE"
+    ;;
+  esac
+
+}
+
 echo Enter a test and a parameter:
 read -r action value
 case $action in
@@ -37,6 +58,9 @@ case $action in
     ;;
   sleep)
     test_sleep $value
+    ;;
+  network)
+    test_network $value
     ;;
   *)
     echo "no valid input provided, exiting"

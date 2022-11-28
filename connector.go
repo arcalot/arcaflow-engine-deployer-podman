@@ -36,7 +36,9 @@ func (c Connector) Deploy(ctx context.Context, image string) (deployer.Plugin, e
 		SetContainerName(c.config.Podman.ContainerName).
 		SetEnv(containerConfig.Env).
 		SetVolumes(hostConfig.Binds).
-		SetCgroupNs(c.config.Podman.CgroupNs)
+		SetCgroupNs(c.config.Podman.CgroupNs).
+		SetNetworkMode(c.config.Podman.NetworkMode)
+
 	stdin, stdout, _, _, err := cliWrapper.Deploy(image, image, commandArgs)
 
 	if err != nil {

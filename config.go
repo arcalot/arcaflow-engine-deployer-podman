@@ -37,7 +37,6 @@ type Podman struct {
 	ContainerName string `json:"containerName"`
 	CgroupNs      string `json:"cgroupNs"`
 	NetworkMode   string `json:"networkMode"`
-	NetworkPort   string `json:"networkPort"`
 }
 
 // Deployment contains the information about deploying the plugin.

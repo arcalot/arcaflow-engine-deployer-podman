@@ -90,17 +90,7 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 				nil,
 			),
 			"networkMode": schema.NewPropertySchema(
-				schema.NewStringSchema(nil, nil, regexp.MustCompile("^\\d+\\:\\d+$")),
-				schema.NewDisplayValue(schema.PointerTo("Port mapping"), schema.PointerTo("Provides network port mapping to the container"), nil),
-				false,
-				nil,
-				nil,
-				nil,
-				nil,
-				nil,
-			),
-			"networkPort": schema.NewPropertySchema(
-				schema.NewStringSchema(nil, nil, regexp.MustCompile("^\\d+\\:\\d+$")),
+				schema.NewStringSchema(nil, nil, regexp.MustCompile("^bridge:.*|host|none$")),
 				schema.NewDisplayValue(schema.PointerTo("Port mapping"), schema.PointerTo("Provides network port mapping to the container"), nil),
 				false,
 				nil,

@@ -433,6 +433,111 @@ func TestNamespacePathCgroupNs(t *testing.T) {
 
 }
 
+var networkTemplate = `
+{
+   "podman":{
+      "containerName":"%s",
+      "path":"/usr/bin/podman",
+      "networkMode":"%s"
+   }
+}
+`
+
+func TestNetworkHost(t *testing.T) {
+	// get the user cgroup ns
+	ifconfig := checkIfconfig(t)
+
+	containername := fmt.Sprintf("test%s", getTestRandomString(5))
+	// The first container will run with the host namespace
+	configtemplate := fmt.Sprintf(networkTemplate, containername, "host")
+	connector, config := getConnector(t, configtemplate)
+	plugin, err := connector.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
+	assert.NoError(t, err)
+
+	t.Cleanup(func() {
+		cmd := exec.Command(config.Podman.Path, "container", "rm", containername)
+		cmd.Run()
+		assert.NoError(t, plugin.Close())
+	})
+	var containerInput = []byte("network host\n")
+	//the test script will run "ifconfig" in the container
+	assert.NoErrorR[int](t)(plugin.Write(containerInput))
+	var ifconfigOut bytes.Buffer
+	//runs ifconfig in the host machine in order to check if the container has exactly the same network configuration
+	cmd := exec.Command(ifconfig)
+	cmd.Stdout = &ifconfigOut
+	cmd.Run()
+
+	readBuffer := readOutputUntil(t, plugin, ifconfigOut.String())
+	if len(readBuffer) == 0 {
+		t.Fatal(fmt.Sprintf("the container did not produce any output"))
+	}
+	if strings.Contains(string(readBuffer), ifconfigOut.String()) == false {
+		t.Fatal(fmt.Sprintf("expected string not found: %s", ifconfigOut.String()))
+	}
+
+}
+
+func TestNetworkBridge(t *testing.T) {
+	log := log.NewTestLogger(t)
+	checkIfconfig(t)
+	containername := fmt.Sprintf("test%s", getTestRandomString(5))
+	// The first container will run with the host namespace
+	configtemplate := fmt.Sprintf(networkTemplate, containername, "bridge:ip=10.88.0.123,mac=44:33:22:11:00:99,interface_name=testif0")
+	connector, config := getConnector(t, configtemplate)
+	plugin, err := connector.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
+	assert.NoError(t, err)
+
+	t.Cleanup(func() {
+		cmd := exec.Command(config.Podman.Path, "container", "rm", containername)
+		cmd.Run()
+		assert.NoError(t, plugin.Close())
+	})
+	var containerInput = []byte("network bridge\n")
+	//the test script will output a string containing the desired ip address and mac address filtered by the desired interface name
+	assert.NoErrorR[int](t)(plugin.Write(containerInput))
+	expectedOutput := "10.88.0.123;44:33:22:11:00:99"
+
+	readBuffer := readOutputUntil(t, plugin, expectedOutput)
+	log.Infof(string(readBuffer))
+	if len(readBuffer) == 0 {
+		t.Fatal(fmt.Sprintf("the container did not produce any output"))
+	}
+	if strings.Contains(string(readBuffer), expectedOutput) == false {
+		t.Fatal(fmt.Sprintf("expected string not found: %s", expectedOutput))
+	}
+
+}
+func TestNetworkNone(t *testing.T) {
+	log := log.NewTestLogger(t)
+	checkIfconfig(t)
+	containername := fmt.Sprintf("test%s", getTestRandomString(5))
+	// The first container will run with the host namespace
+	configtemplate := fmt.Sprintf(networkTemplate, containername, "none")
+	connector, config := getConnector(t, configtemplate)
+	plugin, err := connector.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
+	assert.NoError(t, err)
+
+	t.Cleanup(func() {
+		cmd := exec.Command(config.Podman.Path, "container", "rm", containername)
+		cmd.Run()
+		assert.NoError(t, plugin.Close())
+	})
+	var containerInput = []byte("network none\n")
+	//the test script will output a string containing the desired ip address and mac address filtered by the desired interface name
+	assert.NoErrorR[int](t)(plugin.Write(containerInput))
+	expectedOutput := "1;lo"
+
+	readBuffer := readOutputUntil(t, plugin, expectedOutput)
+	log.Infof(string(readBuffer))
+	if len(readBuffer) == 0 {
+		t.Fatal(fmt.Sprintf("the container did not produce any output"))
+	}
+	if strings.Contains(string(readBuffer), expectedOutput) == false {
+		t.Fatal(fmt.Sprintf("expected string not found: %s", expectedOutput))
+	}
+}
+
 // readOutputUntil helper function, reads from plugin (io.Reader) until finds lookforOutput
 func readOutputUntil(t *testing.T, plugin deployer.Plugin, lookForOutput string) []byte {
 	var n int
@@ -453,4 +558,12 @@ func readOutputUntil(t *testing.T, plugin deployer.Plugin, lookForOutput string)
 			return readBuffer[:n]
 		}
 	}
+}
+
+func checkIfconfig(t *testing.T) string {
+	path, err := exec.LookPath("ifconfig")
+	if err != nil {
+		t.Fatalf("impossible to run test: %s , ifconfig not installed, skipping.", t.Name())
+	}
+	return path
 }

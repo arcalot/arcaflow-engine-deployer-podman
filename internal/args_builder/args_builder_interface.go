@@ -5,7 +5,7 @@ type ArgsBuilder interface {
 	SetVolumes(binds []string) ArgsBuilder
 	SetCgroupNs(cgroupNs string) ArgsBuilder
 	SetContainerName(name string) ArgsBuilder
-	SetPort(port string) ArgsBuilder
+	SetNetworkMode(networkMode string) ArgsBuilder
 }
 
 func NewBuilder(commandArgs *[]string) ArgsBuilder {
