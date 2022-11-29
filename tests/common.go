@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/joho/godotenv"
+	"go.arcalot.io/log"
 	"os"
 	"os/exec"
 	"regexp"
@@ -32,23 +33,23 @@ func GetPodmanPath() string {
 	return os.Getenv("PODMAN_PATH")
 }
 
-func RemoveImage(image string) {
+func RemoveImage(logger log.Logger, image string) {
 	cmd := exec.Command(GetPodmanPath(), "rmi", "-f", image) //nolint:gosec
 	if err := cmd.Run(); err != nil {
-		fmt.Printf("failed to remove image %s", image)
+		logger.Errorf("failed to remove image %s", image)
 	}
 }
 
-func InspectImage(image string) *BasicInspection {
+func InspectImage(logger log.Logger, image string) *BasicInspection {
 	cmd := exec.Command(GetPodmanPath(), "inspect", image) //nolint:gosec
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	if err := cmd.Run(); err != nil {
-		panic(err.Error())
+		logger.Errorf(err.Error())
 	}
 	var objects []BasicInspection
 	if err := json.Unmarshal(out.Bytes(), &objects); err != nil {
-		panic(err)
+		logger.Errorf(err.Error())
 	}
 	if len(objects) == 0 {
 		return nil
@@ -57,7 +58,7 @@ func InspectImage(image string) *BasicInspection {
 }
 
 // GetCommmandCgroupNs detects the user's cgroup namespace
-func GetCommmandCgroupNs(command string, args []string) string {
+func GetCommmandCgroupNs(logger log.Logger, command string, args []string) string {
 	var pid int
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -66,12 +67,12 @@ func GetCommmandCgroupNs(command string, args []string) string {
 		cmd1 := exec.Command(command, args...)
 
 		if err := cmd1.Start(); err != nil {
-			panic(err.Error())
+			logger.Errorf(err.Error())
 		}
 		pid = cmd1.Process.Pid
 
 		if err := cmd1.Wait(); err != nil {
-			panic(err.Error())
+			logger.Errorf(err.Error())
 		}
 	}()
 	time.Sleep(1 * time.Second)
@@ -83,7 +84,7 @@ func GetCommmandCgroupNs(command string, args []string) string {
 		cmd2 := exec.Command("ls", "-al", fmt.Sprintf("/proc/%d/ns/cgroup", pid)) //nolint:gosec
 		cmd2.Stdout = &stdout
 		if err := cmd2.Run(); err != nil {
-			panic(err.Error())
+			logger.Errorf(err.Error())
 		}
 		userCgroupNs = strings.Split(stdout.String(), " ")[10]
 	}()
@@ -96,7 +97,7 @@ func GetCommmandCgroupNs(command string, args []string) string {
 }
 
 // GetPodmanCgroupNs  detects the running container cgroup namespace
-func GetPodmanCgroupNs(podmanPath string, containerName string) string {
+func GetPodmanCgroupNs(logger log.Logger, podmanPath string, containerName string) string {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	var podmanCgroupNs string
@@ -106,7 +107,7 @@ func GetPodmanCgroupNs(podmanPath string, containerName string) string {
 		cmd := exec.Command(podmanPath, "ps", "--ns", "--filter", fmt.Sprintf("name=%s", containerName), "--format", "{{.CGROUPNS}}") //nolint:gosec
 		cmd.Stdout = &stdout
 		if err := cmd.Run(); err != nil {
-			panic(err.Error())
+			logger.Errorf(err.Error())
 		}
 		podmanCgroupNs = stdout.String()
 	}()
@@ -115,23 +116,23 @@ func GetPodmanCgroupNs(podmanPath string, containerName string) string {
 	return podmanCgroupNs
 }
 
-func IsContainerRunning(podmanPath string, containerName string) bool {
+func IsContainerRunning(logger log.Logger, podmanPath string, containerName string) bool {
 	var stdout bytes.Buffer
 	cmd := exec.Command(podmanPath, "ps", "--filter", fmt.Sprintf("name=%s", containerName), "--format", "{{.ID}}") //nolint:gosec
 	cmd.Stdout = &stdout
 	if err := cmd.Run(); err != nil {
-		panic(err.Error())
+		logger.Errorf(err.Error())
 	}
 	stdoutStr := stdout.String()
 	return stdoutStr != ""
 }
 
-func GetPodmanPsNsWithFormat(podmanPath string, containerName string, format string) string {
+func GetPodmanPsNsWithFormat(logger log.Logger, podmanPath string, containerName string, format string) string {
 	var stdoutContainer bytes.Buffer
 	cmd := exec.Command(podmanPath, "ps", "--ns", "--filter", fmt.Sprintf("name=%s", containerName), "--format", format) //nolint:gosec
 	cmd.Stdout = &stdoutContainer
 	if err := cmd.Run(); err != nil {
-		panic(err.Error())
+		logger.Errorf(err.Error())
 	}
 	return strings.TrimSuffix(stdoutContainer.String(), "\n")
 }

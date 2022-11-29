@@ -70,9 +70,9 @@ func (c *Connector) pullImage(_ context.Context, image string) error {
 			return nil
 		}
 		//TODO:fix default values in configuration
-		_amd64 := "amd64"
+
 		c.logger.Debugf("Pulling image: %s", image)
-		if err := c.podmanCliWrapper.PullImage(image, &_amd64); err != nil {
+		if err := c.podmanCliWrapper.PullImage(image, &c.config.Podman.ImageArchitecture); err != nil {
 			return err
 		}
 	}

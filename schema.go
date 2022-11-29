@@ -2,11 +2,9 @@ package podman
 
 import (
 	"arcaflow-engine-deployer-podman/internal/util"
-	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"os/exec"
 
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/network"
 	"github.com/docker/go-connections/nat"
 	"go.flow.arcalot.io/pluginsdk/schema"
 	"regexp"
@@ -90,12 +88,32 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 			),
 			"networkMode": schema.NewPropertySchema(
 				schema.NewStringSchema(nil, nil, regexp.MustCompile("^bridge:.*|host|none$")),
-				schema.NewDisplayValue(schema.PointerTo("Port mapping"), schema.PointerTo("Provides network port mapping to the container"), nil),
+				schema.NewDisplayValue(schema.PointerTo("Network Mode"), schema.PointerTo("Provides network settings for the container"), nil),
 				false,
 				nil,
 				nil,
 				nil,
 				nil,
+				nil,
+			),
+			"imageOS": schema.NewPropertySchema(
+				schema.NewStringSchema(nil, nil, regexp.MustCompile("^.*$")),
+				schema.NewDisplayValue(schema.PointerTo("Podman Image OS"), schema.PointerTo("Provides Podman Image Operating System"), nil),
+				false,
+				nil,
+				nil,
+				nil,
+				schema.PointerTo(util.JSONEncode("linux")),
+				nil,
+			),
+			"imageArchitecture": schema.NewPropertySchema(
+				schema.NewStringSchema(nil, nil, regexp.MustCompile("^.*$")),
+				schema.NewDisplayValue(schema.PointerTo("Podman image Architecture"), schema.PointerTo("Provides Podman Image Architecture"), nil),
+				false,
+				nil,
+				nil,
+				nil,
+				schema.PointerTo(util.JSONEncode("amd64")),
 				nil,
 			),
 		},
@@ -116,26 +134,6 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 			"host": schema.NewPropertySchema(
 				schema.NewRefSchema("HostConfig", nil),
 				schema.NewDisplayValue(schema.PointerTo("Host configuration"), schema.PointerTo("Provides information about the container host for the plugin."), nil),
-				false,
-				nil,
-				nil,
-				nil,
-				nil,
-				nil,
-			),
-			"network": schema.NewPropertySchema(
-				schema.NewRefSchema("NetworkConfig", nil),
-				schema.NewDisplayValue(schema.PointerTo("Network configuration"), schema.PointerTo("Provides information about the container networking for the plugin."), nil),
-				false,
-				nil,
-				nil,
-				nil,
-				nil,
-				nil,
-			),
-			"platform": schema.NewPropertySchema(
-				schema.NewRefSchema("PlatformConfig", nil),
-				schema.NewDisplayValue(schema.PointerTo("Platform configuration"), schema.PointerTo("Provides information about the container host platform for the plugin."), nil),
 				false,
 				nil,
 				nil,
@@ -347,14 +345,6 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 				nil,
 			),
 		},
-	),
-	schema.NewStructMappedObjectSchema[*network.NetworkingConfig](
-		"NetworkConfig",
-		map[string]*schema.PropertySchema{},
-	),
-	schema.NewStructMappedObjectSchema[*specs.Platform](
-		"PlatformConfig",
-		map[string]*schema.PropertySchema{},
 	),
 	schema.NewStructMappedObjectSchema[*nat.PortBinding](
 		"PortBinding",

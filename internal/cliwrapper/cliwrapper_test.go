@@ -12,13 +12,13 @@ import (
 
 func TestPodman_ImageExists(t *testing.T) {
 	logger := log.NewTestLogger(t)
-	tests.RemoveImage(tests.TestImage)
+	tests.RemoveImage(logger, tests.TestImage)
 
 	podman := NewCliWrapper(tests.GetPodmanPath(), logger)
 
 	assert.NotNil(t, tests.GetPodmanPath())
 
-	cmd := exec.Command(tests.GetPodmanPath(), "pull", tests.TestImage)
+	cmd := exec.Command(tests.GetPodmanPath(), "pull", tests.TestImage) //nolint:gosec
 	if err := cmd.Run(); err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -44,12 +44,12 @@ func TestPodman_ImageExists(t *testing.T) {
 	assert.Equals(t, *result, false)
 
 	// cleanup
-	tests.RemoveImage(tests.TestImage)
+	tests.RemoveImage(logger, tests.TestImage)
 }
 
 func TestPodman_PullImage(t *testing.T) {
 	logger := log.NewTestLogger(t)
-	tests.RemoveImage(tests.TestImage)
+	tests.RemoveImage(logger, tests.TestImage)
 
 	podman := NewCliWrapper(tests.GetPodmanPath(), logger)
 	assert.NotNil(t, tests.GetPodmanPath())
@@ -59,24 +59,24 @@ func TestPodman_PullImage(t *testing.T) {
 		assert.Nil(t, err)
 	}
 
-	imageArch := tests.InspectImage(tests.TestImage)
+	imageArch := tests.InspectImage(logger, tests.TestImage)
 	assert.NotNil(t, imageArch)
 
-	tests.RemoveImage(tests.TestImage)
+	tests.RemoveImage(logger, tests.TestImage)
 	// pull with platform
 	platform := "linux/arm64"
 	if err := podman.PullImage(tests.TestImage, &platform); err != nil {
 		assert.Nil(t, err)
 	}
-	imageArch = tests.InspectImage(tests.TestImage)
+	imageArch = tests.InspectImage(logger, tests.TestImage)
 	assert.Equals(t, platform, fmt.Sprintf("%s/%s", imageArch.Os, imageArch.Architecture))
 
-	tests.RemoveImage(tests.TestImage)
+	tests.RemoveImage(logger, tests.TestImage)
 	// pull existing image without baseUrl
 	if err := podman.PullImage(tests.TestImageNoBaseURL, nil); err != nil {
 		assert.Nil(t, err)
 	}
-	imageArch = tests.InspectImage(tests.TestImage)
+	imageArch = tests.InspectImage(logger, tests.TestImage)
 	assert.NotNil(t, imageArch)
 
 	// pull not existing image without baseUrl (cli interactively asks for the image repository)

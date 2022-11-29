@@ -156,6 +156,7 @@ var nameTemplate = `
 `
 
 func TestContainerName(t *testing.T) {
+	logger := log.NewTestLogger(t)
 	containerName := fmt.Sprintf("test_%s", util.GetRandomString(5))
 	configTemplate := fmt.Sprintf(nameTemplate, containerName)
 	connector, config := getConnector(t, configTemplate)
@@ -175,7 +176,7 @@ func TestContainerName(t *testing.T) {
 		assert.NoErrorR[int](t)(container.Write(containerInput))
 	}()
 	time.Sleep(1 * time.Second)
-	if tests.IsContainerRunning(config.Podman.Path, containerName) == false {
+	if tests.IsContainerRunning(logger, config.Podman.Path, containerName) == false {
 		t.Fatalf("container with name %s not found", containerName)
 	}
 
@@ -232,8 +233,8 @@ func TestCgroupNs(t *testing.T) {
 		assert.NoErrorR[int](t)(container2.Write(containerInput))
 	}()
 
-	ns1 := tests.GetPodmanPsNsWithFormat(config.Podman.Path, containername1, "{{.CGROUPNS}}")
-	ns2 := tests.GetPodmanPsNsWithFormat(config.Podman.Path, containername2, "{{.CGROUPNS}}")
+	ns1 := tests.GetPodmanPsNsWithFormat(logger, config.Podman.Path, containername1, "{{.CGROUPNS}}")
+	ns2 := tests.GetPodmanPsNsWithFormat(logger, config.Podman.Path, containername2, "{{.CGROUPNS}}")
 
 	if ns1 != ns2 {
 		t.Fail()
@@ -247,7 +248,7 @@ func TestPrivateCgroupNs(t *testing.T) {
 	// get the user cgroup ns
 	logger := log.NewTestLogger(t)
 	var wg sync.WaitGroup
-	userCgroupNs := tests.GetCommmandCgroupNs("/usr/bin/sleep", []string{"3"})
+	userCgroupNs := tests.GetCommmandCgroupNs(logger, "/usr/bin/sleep", []string{"3"})
 	assert.NotNil(t, userCgroupNs)
 	logger.Debugf("Detected cgroup namespace for user: %s", userCgroupNs)
 
@@ -271,7 +272,7 @@ func TestPrivateCgroupNs(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	var podmanCgroupNs = tests.GetPodmanCgroupNs(config.Podman.Path, containername)
+	var podmanCgroupNs = tests.GetPodmanCgroupNs(logger, config.Podman.Path, containername)
 	wg.Wait()
 
 	// if the user's namespace is equal to the podman one the test must fail
@@ -287,7 +288,7 @@ func TestHostCgroupNs(t *testing.T) {
 	logger := log.NewTestLogger(t)
 	var wg sync.WaitGroup
 
-	userCgroupNs := tests.GetCommmandCgroupNs("/usr/bin/sleep", []string{"3"})
+	userCgroupNs := tests.GetCommmandCgroupNs(logger, "/usr/bin/sleep", []string{"3"})
 	assert.NotNil(t, userCgroupNs)
 
 	logger.Debugf("Detected cgroup namespace for user: %s", userCgroupNs)
@@ -312,7 +313,7 @@ func TestHostCgroupNs(t *testing.T) {
 	// waits for the container to become ready
 	time.Sleep(2 * time.Second)
 
-	var podmanCgroupNs = tests.GetPodmanCgroupNs(config.Podman.Path, containername)
+	var podmanCgroupNs = tests.GetPodmanCgroupNs(logger, config.Podman.Path, containername)
 	assert.NotNil(t, podmanCgroupNs)
 	wg.Wait()
 	// if the container is running in a different cgroup namespace than the user the test must fail
@@ -343,7 +344,7 @@ func TestNamespaceCgroupNs(t *testing.T) {
 	// sleeps to wait the first container become ready and attach to its cgroup ns
 	time.Sleep(2 * time.Second)
 
-	pid := tests.GetPodmanPsNsWithFormat(config.Podman.Path, containername1, "{{.Pid}}")
+	pid := tests.GetPodmanPsNsWithFormat(logger, config.Podman.Path, containername1, "{{.Pid}}")
 
 	containername2 := fmt.Sprintf("test%s", util.GetRandomString(5))
 	// The second one will join the newly created private namespace of the first container
@@ -366,8 +367,8 @@ func TestNamespaceCgroupNs(t *testing.T) {
 		assert.NoErrorR[int](t)(container2.Write(containerInput))
 	}()
 
-	ns1 := tests.GetPodmanPsNsWithFormat(config.Podman.Path, containername1, "{{.CGROUPNS}}")
-	ns2 := tests.GetPodmanPsNsWithFormat(config.Podman.Path, containername2, "{{.CGROUPNS}}")
+	ns1 := tests.GetPodmanPsNsWithFormat(logger, config.Podman.Path, containername1, "{{.CGROUPNS}}")
+	ns2 := tests.GetPodmanPsNsWithFormat(logger, config.Podman.Path, containername2, "{{.CGROUPNS}}")
 	if ns1 != ns2 {
 		t.Fail()
 	} else {

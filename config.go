@@ -2,8 +2,6 @@ package podman
 
 import (
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/network"
-	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"time"
 )
 
@@ -33,20 +31,19 @@ const (
 )
 
 type Podman struct {
-	Path          string `json:"path"`
-	ContainerName string `json:"containerName"`
-	CgroupNs      string `json:"cgroupNs"`
-	NetworkMode   string `json:"networkMode"`
+	Path              string `json:"path"`
+	ContainerName     string `json:"containerName"`
+	CgroupNs          string `json:"cgroupNs"`
+	NetworkMode       string `json:"networkMode"`
+	ImageArchitecture string `json:"imageArchitecture"`
+	ImageOS           string `json:"imageOS"`
 }
 
 // Deployment contains the information about deploying the plugin.
 type Deployment struct {
-	ContainerConfig *container.Config         `json:"container"`
-	HostConfig      *container.HostConfig     `json:"host"`
-	NetworkConfig   *network.NetworkingConfig `json:"network"`
-	Platform        *specs.Platform           `json:"platform"`
-
-	ImagePullPolicy ImagePullPolicy `json:"imagePullPolicy"`
+	ContainerConfig *container.Config     `json:"container"`
+	HostConfig      *container.HostConfig `json:"host"`
+	ImagePullPolicy ImagePullPolicy       `json:"imagePullPolicy"`
 }
 
 // Timeouts drive the timeouts for various interactions in relation to Docker.
