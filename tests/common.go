@@ -136,3 +136,8 @@ func GetPodmanPsNsWithFormat(logger log.Logger, podmanPath string, containerName
 	}
 	return strings.TrimSuffix(stdoutContainer.String(), "\n")
 }
+
+func IsRunningOnGithub() bool {
+	githubEnv := os.Getenv("GITHUB_ACTION")
+	return githubEnv != ""
+}

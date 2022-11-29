@@ -18,6 +18,8 @@ jobs:
   test:
     name: go test
     runs-on: ubuntu-latest
+    env:
+      GITHUB_ACTION: true
     steps:
       - name: Checkout
         uses: actions/checkout@v2

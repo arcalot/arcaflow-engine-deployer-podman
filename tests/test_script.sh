@@ -32,7 +32,16 @@ test_network () {
     bridge)
     IP_ADDRESS=`/usr/sbin/ifconfig testif0 | /usr/bin/grep inet | /usr/bin/awk '{ print $2 }'`
     MAC=`/usr/sbin/ifconfig testif0 | /usr/bin/grep ether | /usr/bin/awk '{ print $2 }'`
-    echo "$IP_ADDRESS;$MAC"
+    if [ -z $IP_ADDRESS ] || [ -z $MAC ]
+    then
+      echo "WARNING: impossible to fetch ip and mac address, ifconfig output: "
+      echo ""
+      echo ""
+      IFCFG=`/usr/sbin/ifconfig`
+      echo "$IFCFG"
+    else
+      echo "$IP_ADDRESS;$MAC"
+    fi
     exit 0
     ;;
     none)
