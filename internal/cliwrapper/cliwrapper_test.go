@@ -70,12 +70,7 @@ func TestPodman_PullImage(t *testing.T) {
 	}
 	imageArch = tests.InspectImage(logger, tests.TestImage)
 	assert.Equals(t, platform, fmt.Sprintf("%s/%s", imageArch.Os, imageArch.Architecture))
-
 	tests.RemoveImage(logger, tests.TestImage)
-	// pull existing image without baseUrl
-	if err := podman.PullImage(tests.TestImageNoBaseURL, nil); err != nil {
-		assert.Nil(t, err)
-	}
 	imageArch = tests.InspectImage(logger, tests.TestImage)
 	assert.NotNil(t, imageArch)
 
