@@ -136,7 +136,7 @@ func TestSimpleVolume(t *testing.T) {
 	cmd := exec.Command("chcon", "-Rt", "svirt_sandbox_file_t", fmt.Sprintf("%s/tests/volume", cwd)) //nolint:gosec
 	err = cmd.Run()
 	if err != nil {
-		logger.Warningf("failed to set SELinux permissions on folderm, chcon error: %s, this may cause test failure, let's see...", err.Error())
+		logger.Warningf("failed to set SELinux permissions on folder, chcon error: %s, this may cause test failure, let's see...", err.Error())
 	}
 
 	container, err := connector.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
@@ -543,6 +543,6 @@ func testNetworking(t *testing.T, podmanNetworking string, containerTest string,
 		t.Fatalf("the container did not produce any output")
 	}
 	if strings.Contains(string(readBuffer), expectedOutput) == false {
-		t.Fatalf("expected string not found: %s", expectedOutput)
+		t.Fatalf("expected string not found: %s, %s found instead", expectedOutput, string(readBuffer))
 	}
 }
