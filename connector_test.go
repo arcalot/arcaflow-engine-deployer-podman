@@ -122,25 +122,36 @@ var volumeConfig = `
 
 func TestSimpleVolume(t *testing.T) {
 	fileContent, err := os.ReadFile("./tests/volume/test_file.txt")
-	assert.Nil(t, err)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
 	connector, _ := getConnector(t, volumeConfig)
 
 	cwd, err := os.Getwd()
-	assert.Nil(t, err)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
 	// disable selinux on the test folder in order to make the file readable from within the container
 	cmd := exec.Command("chcon", "-Rt", "svirt_sandbox_file_t", fmt.Sprintf("%s/tests/volume", cwd)) //nolint:gosec
 	err = cmd.Run()
-	assert.Nil(t, err)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
 
 	container, err := connector.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
-	assert.NoError(t, err)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
 	t.Cleanup(func() {
 		assert.NoError(t, container.Close())
 	})
 
 	var containerInput = []byte("volume\n")
 
-	assert.NoErrorR[int](t)(container.Write(containerInput))
+	_, err = container.Write(containerInput)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
 
 	readBuffer := readOutputUntil(t, container, string(fileContent))
 	if len(readBuffer) == 0 {
@@ -353,7 +364,10 @@ func TestNamespaceCgroupNs(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		var containerInput = []byte("sleep 10\n")
-		assert.NoErrorR[int](t)(container1.Write(containerInput))
+		if _, err := container1.Write(containerInput); err != nil {
+			t.Errorf(err.Error())
+			return
+		}
 	}()
 	// sleeps to wait the first container become ready and attach to its cgroup ns
 	time.Sleep(2 * time.Second)
@@ -367,7 +381,9 @@ func TestNamespaceCgroupNs(t *testing.T) {
 	connector2, _ := getConnector(t, configtemplate2)
 
 	container2, err := connector2.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
-	assert.NoError(t, err)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
 
 	t.Cleanup(func() {
 		assert.NoError(t, container1.Close())
@@ -378,13 +394,16 @@ func TestNamespaceCgroupNs(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		var containerInput = []byte("sleep 5\n")
-		assert.NoErrorR[int](t)(container2.Write(containerInput))
+		if _, err := container2.Write(containerInput); err != nil {
+			t.Errorf(err.Error())
+			return
+		}
 	}()
 
 	ns1 := tests.GetPodmanPsNsWithFormat(logger, config.Podman.Path, containername1, "{{.CGROUPNS}}")
 	ns2 := tests.GetPodmanPsNsWithFormat(logger, config.Podman.Path, containername2, "{{.CGROUPNS}}")
 	if ns1 != ns2 {
-		t.Fail()
+		t.Errorf("namespace1: %s and namespace2: %s do not match, failing", ns1, ns2)
 	} else {
 		logger.Debugf("container 1 namespace: %s, container 2 namespace: %s, they're the same!", ns1, ns2)
 		logger.Debugf("Container 2 joined the namespace via namespace path: %s", namespacePath)
@@ -504,14 +523,18 @@ func testNetworking(t *testing.T, podmanNetworking string, containerTest string,
 	configtemplate := fmt.Sprintf(networkTemplate, containername, podmanNetworking)
 	connector, _ := getConnector(t, configtemplate)
 	plugin, err := connector.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
-	assert.NoError(t, err)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
 
 	t.Cleanup(func() {
 		assert.NoError(t, plugin.Close())
 	})
 	var containerInput = []byte(containerTest)
 	// the test script will output a string containing the desired ip address and mac address filtered by the desired interface name
-	assert.NoErrorR[int](t)(plugin.Write(containerInput))
+	if _, err := plugin.Write(containerInput); err != nil {
+		t.Fatalf(err.Error())
+	}
 
 	readBuffer := readOutputUntil(t, plugin, expectedOutput)
 	logger.Infof(string(readBuffer))
