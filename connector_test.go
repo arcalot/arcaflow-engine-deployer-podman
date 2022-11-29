@@ -43,6 +43,7 @@ var inOutConfig = `
 `
 
 func TestSimpleInOut(t *testing.T) {
+	logger := log.NewTestLogger(t)
 	pongStr := "pong abc"
 	endStr := "end abc"
 
@@ -58,7 +59,8 @@ func TestSimpleInOut(t *testing.T) {
 	if len(readBuffer) == 0 {
 		t.Fatalf("expected string not found: %s", pongStr)
 	}
-	fmt.Println(string(readBuffer[:7]))
+
+	logger.Infof(string(readBuffer[:7]))
 
 	assert.NoErrorR[int](t)(plugin.Write(containerInput))
 	readBuffer = readOutputUntil(t, plugin, endStr)
@@ -201,7 +203,9 @@ func TestCgroupNs(t *testing.T) {
 	connector1, config := getConnector(t, configtemplate1)
 
 	container1, err := connector1.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
-	assert.NoError(t, err)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
 
 	containername2 := fmt.Sprintf("test%s", util.GetRandomString(5))
 	// The second one will join the newly created private namespace of the first container
@@ -209,7 +213,9 @@ func TestCgroupNs(t *testing.T) {
 	connector2, _ := getConnector(t, configtemplate2)
 
 	container2, err := connector2.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
-	assert.NoError(t, err)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
 
 	t.Cleanup(func() {
 		assert.NoError(t, container1.Close())
@@ -221,7 +227,11 @@ func TestCgroupNs(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		var containerInput = []byte("sleep 7\n")
-		assert.NoErrorR[int](t)(container1.Write(containerInput))
+		_, err := container1.Write(containerInput)
+		if err != nil {
+			t.Errorf(err.Error())
+			return
+		}
 	}()
 	// sleeps to wait the first container become ready and attach to its cgroup ns
 	time.Sleep(2 * time.Second)
@@ -230,14 +240,18 @@ func TestCgroupNs(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		var containerInput = []byte("sleep 5\n")
-		assert.NoErrorR[int](t)(container2.Write(containerInput))
+		_, err := container2.Write(containerInput)
+		if err != nil {
+			t.Errorf(err.Error())
+			return
+		}
 	}()
 
 	ns1 := tests.GetPodmanPsNsWithFormat(logger, config.Podman.Path, containername1, "{{.CGROUPNS}}")
 	ns2 := tests.GetPodmanPsNsWithFormat(logger, config.Podman.Path, containername2, "{{.CGROUPNS}}")
 
 	if ns1 != ns2 {
-		t.Fail()
+		t.Errorf("namespace1: %s and namespace2: %s do not match, failing", ns1, ns2)
 	} else {
 		logger.Debugf("container 1 namespace: %s, container 2 namespace: %s, they're the same!", ns1, ns2)
 	}
