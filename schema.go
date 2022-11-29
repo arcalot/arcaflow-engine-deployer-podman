@@ -2,7 +2,6 @@ package podman
 
 import (
 	"arcaflow-engine-deployer-podman/internal/util"
-	"fmt"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"os/exec"
 
@@ -16,7 +15,7 @@ import (
 func podmanGetDefaultPath() string {
 	path, err := exec.LookPath("podman")
 	if err != nil {
-		fmt.Errorf("podman binary not found in $PATH, please provide it in configuration")
+		panic("podman binary not found in $PATH, please provide it in configuration")
 	}
 	return path
 }
@@ -80,7 +79,7 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 				nil,
 			),
 			"cgroupNs": schema.NewPropertySchema(
-				schema.NewStringSchema(nil, nil, regexp.MustCompile("^host|ns:/proc/\\d+/ns/cgroup|container:.+|private$")),
+				schema.NewStringSchema(nil, nil, regexp.MustCompile(`^host|ns:/proc/\d+/ns/cgroup|container:.+|private$`)),
 				schema.NewDisplayValue(schema.PointerTo("CGroup namespace"), schema.PointerTo("Provides the Cgroup Namespace settings for the container"), nil),
 				false,
 				nil,

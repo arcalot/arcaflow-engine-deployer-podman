@@ -10,7 +10,6 @@ type CliPlugin struct {
 	wrapper        cliwrapper.CliWrapper
 	containerImage string
 	containerName  string
-	readIndex      int64
 	config         *Config
 	logger         log.Logger
 	stdin          io.WriteCloser
@@ -28,8 +27,19 @@ func (p *CliPlugin) Read(b []byte) (n int, err error) {
 }
 
 func (p *CliPlugin) Close() error {
-	if err := p.wrapper.KillAndWait(p.containerName); err != nil {
+	if err := p.wrapper.KillAndClean(p.containerName); err != nil {
 		return err
+	}
+
+	if err := p.stdin.Close(); err != nil {
+		p.logger.Errorf("failed to close stdin pipe")
+	} else {
+		p.logger.Infof("stdin pipe successfully closed")
+	}
+	if err := p.stdout.Close(); err != nil {
+		p.logger.Infof("failed to close stdout pipe")
+	} else {
+		p.logger.Infof("stdout pipe successfully closed")
 	}
 	return nil
 }

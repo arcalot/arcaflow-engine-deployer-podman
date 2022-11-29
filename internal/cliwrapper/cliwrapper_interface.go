@@ -11,5 +11,5 @@ type CliWrapper interface {
 		image string,
 		args []string,
 	) (io.WriteCloser, io.ReadCloser, error)
-	KillAndWait(containerName string) error
+	KillAndClean(containerName string) error
 }

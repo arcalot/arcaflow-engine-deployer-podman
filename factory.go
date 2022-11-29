@@ -29,7 +29,7 @@ func (f factory) Create(config *Config, logger log.Logger) (deployer.Connector, 
 	podman := cliwrapper.NewCliWrapper(config.Podman.Path, logger)
 	var containerName string
 	if config.Podman.ContainerName == "" {
-		containerName = fmt.Sprintf("arcaflowpodman%s", util.GetRandomString(5))
+		containerName = fmt.Sprintf("arcaflow_podman_%s", util.GetRandomString(5))
 	} else {
 		containerName = config.Podman.ContainerName
 	}

@@ -29,20 +29,23 @@ func GetPodmanPath() string {
 	if err := godotenv.Load("../../tests/env/test.env"); err != nil {
 		panic(err)
 	}
-
 	return os.Getenv("PODMAN_PATH")
 }
 
 func RemoveImage(image string) {
-	cmd := exec.Command(GetPodmanPath(), "rmi", "-f", image)
-	cmd.Run()
+	cmd := exec.Command(GetPodmanPath(), "rmi", "-f", image) //nolint:gosec
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("failed to remove image %s", image)
+	}
 }
 
 func InspectImage(image string) *BasicInspection {
-	cmd := exec.Command(GetPodmanPath(), "inspect", image)
+	cmd := exec.Command(GetPodmanPath(), "inspect", image) //nolint:gosec
 	var out bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Run()
+	if err := cmd.Run(); err != nil {
+		panic(err.Error())
+	}
 	var objects []BasicInspection
 	if err := json.Unmarshal(out.Bytes(), &objects); err != nil {
 		panic(err)
@@ -61,9 +64,15 @@ func GetCommmandCgroupNs(command string, args []string) string {
 	go func() {
 		defer wg.Done()
 		cmd1 := exec.Command(command, args...)
-		cmd1.Start()
+
+		if err := cmd1.Start(); err != nil {
+			panic(err.Error())
+		}
 		pid = cmd1.Process.Pid
-		cmd1.Wait()
+
+		if err := cmd1.Wait(); err != nil {
+			panic(err.Error())
+		}
 	}()
 	time.Sleep(1 * time.Second)
 	wg.Add(1)
@@ -71,20 +80,22 @@ func GetCommmandCgroupNs(command string, args []string) string {
 	go func() {
 		defer wg.Done()
 		var stdout bytes.Buffer
-		cmd2 := exec.Command("ls", "-al", fmt.Sprintf("/proc/%d/ns/cgroup", pid))
+		cmd2 := exec.Command("ls", "-al", fmt.Sprintf("/proc/%d/ns/cgroup", pid)) //nolint:gosec
 		cmd2.Stdout = &stdout
-		cmd2.Run()
+		if err := cmd2.Run(); err != nil {
+			panic(err.Error())
+		}
 		userCgroupNs = strings.Split(stdout.String(), " ")[10]
 	}()
 	wg.Wait()
 	// removes linux cgroup notation
-	regex := regexp.MustCompile("cgroup:\\[(\\d+)\\]")
+	regex := regexp.MustCompile(`cgroup:\[(\d+)\]`)
 	userCgroupNs = regex.ReplaceAllString(userCgroupNs, "$1")
 	userCgroupNs = strings.TrimSuffix(userCgroupNs, "\n")
 	return userCgroupNs
 }
 
-// GtPomanCgroupNs  detects the running container cgroup namespace
+// GetPodmanCgroupNs  detects the running container cgroup namespace
 func GetPodmanCgroupNs(podmanPath string, containerName string) string {
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -92,12 +103,35 @@ func GetPodmanCgroupNs(podmanPath string, containerName string) string {
 	go func() {
 		defer wg.Done()
 		var stdout bytes.Buffer
-		cmd := exec.Command(podmanPath, "ps", "--ns", "--filter", fmt.Sprintf("name=%s", containerName), "--format", "{{.CGROUPNS}}")
+		cmd := exec.Command(podmanPath, "ps", "--ns", "--filter", fmt.Sprintf("name=%s", containerName), "--format", "{{.CGROUPNS}}") //nolint:gosec
 		cmd.Stdout = &stdout
-		cmd.Run()
+		if err := cmd.Run(); err != nil {
+			panic(err.Error())
+		}
 		podmanCgroupNs = stdout.String()
 	}()
 	wg.Wait()
 	podmanCgroupNs = strings.TrimSuffix(podmanCgroupNs, "\n")
 	return podmanCgroupNs
+}
+
+func IsContainerRunning(podmanPath string, containerName string) bool {
+	var stdout bytes.Buffer
+	cmd := exec.Command(podmanPath, "ps", "--filter", fmt.Sprintf("name=%s", containerName), "--format", "{{.ID}}") //nolint:gosec
+	cmd.Stdout = &stdout
+	if err := cmd.Run(); err != nil {
+		panic(err.Error())
+	}
+	stdoutStr := stdout.String()
+	return stdoutStr != ""
+}
+
+func GetPodmanPsNsWithFormat(podmanPath string, containerName string, format string) string {
+	var stdoutContainer bytes.Buffer
+	cmd := exec.Command(podmanPath, "ps", "--ns", "--filter", fmt.Sprintf("name=%s", containerName), "--format", format) //nolint:gosec
+	cmd.Stdout = &stdoutContainer
+	if err := cmd.Run(); err != nil {
+		panic(err.Error())
+	}
+	return strings.TrimSuffix(stdoutContainer.String(), "\n")
 }

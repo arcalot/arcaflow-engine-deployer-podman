@@ -1,9 +1,3 @@
-# arcaflow-engine-deployer-podman
+# Arcaflow engine deployer podman
 
-## TODO: 
-- namespace setting
-- volume mounts DONE
-- envvars DONE
-- networking
-- assign always a podname if not specified
-- remove container in close method or after the execution?!
+This library is an implementation of the [arcaflow deployer interface](https://github.com/arcalot/arcaflow-engine-deployer) that uses the podman CLI.

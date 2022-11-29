@@ -126,7 +126,7 @@ func TestSimpleVolume(t *testing.T) {
 	cwd, err := os.Getwd()
 	assert.Nil(t, err)
 	// disable selinux on the test folder in order to make the file readable from within the container
-	cmd := exec.Command("chcon", "-Rt", "svirt_sandbox_file_t", fmt.Sprintf("%s/tests/volume", cwd))
+	cmd := exec.Command("chcon", "-Rt", "svirt_sandbox_file_t", fmt.Sprintf("%s/tests/volume", cwd)) //nolint:gosec
 	err = cmd.Run()
 	assert.Nil(t, err)
 
@@ -164,8 +164,6 @@ func TestContainerName(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Cleanup(func() {
-		cmd := exec.Command(config.Podman.Path, "container", "rm", containerName)
-		cmd.Run()
 		assert.NoError(t, container.Close())
 	})
 
@@ -176,13 +174,11 @@ func TestContainerName(t *testing.T) {
 		var containerInput = []byte("sleep 3\n")
 		assert.NoErrorR[int](t)(container.Write(containerInput))
 	}()
+	time.Sleep(1 * time.Second)
+	if tests.IsContainerRunning(config.Podman.Path, containerName) == false {
+		t.Fatalf("container with name %s not found", containerName)
+	}
 
-	var stdout bytes.Buffer
-	cmd := exec.Command(config.Podman.Path, "ps", "--filter", fmt.Sprintf("name=%s", containerName), "--format", "{{.ID}}")
-	cmd.Stdout = &stdout
-	cmd.Run()
-	stdoutStr := stdout.String()
-	assert.NotNil(t, stdoutStr)
 	wg.Wait()
 }
 
@@ -197,7 +193,7 @@ var cgroupTemplate = `
 `
 
 func TestCgroupNs(t *testing.T) {
-	log := log.NewTestLogger(t)
+	logger := log.NewTestLogger(t)
 	containername1 := fmt.Sprintf("test%s", util.GetRandomString(5))
 	// The first container will run with a private namespace that will be created at startup
 	configtemplate1 := fmt.Sprintf(cgroupTemplate, containername1, "private")
@@ -236,34 +232,24 @@ func TestCgroupNs(t *testing.T) {
 		assert.NoErrorR[int](t)(container2.Write(containerInput))
 	}()
 
-	var stdoutContainer1 bytes.Buffer
-	var stdoutContainer2 bytes.Buffer
+	ns1 := tests.GetPodmanPsNsWithFormat(config.Podman.Path, containername1, "{{.CGROUPNS}}")
+	ns2 := tests.GetPodmanPsNsWithFormat(config.Podman.Path, containername2, "{{.CGROUPNS}}")
 
-	cmd1 := exec.Command(config.Podman.Path, "ps", "--ns", "--filter", fmt.Sprintf("name=%s", containername1), "--format", "{{.CGROUPNS}}")
-	cmd1.Stdout = &stdoutContainer1
-	cmd1.Run()
-
-	cmd2 := exec.Command(config.Podman.Path, "ps", "--ns", "--filter", fmt.Sprintf("name=%s", containername2), "--format", "{{.CGROUPNS}}")
-	cmd2.Stdout = &stdoutContainer2
-	cmd2.Run()
-	// check that both the container are running in the same namespace
-	ns1 := strings.TrimSuffix(stdoutContainer1.String(), "\n")
-	ns2 := strings.TrimSuffix(stdoutContainer2.String(), "\n")
 	if ns1 != ns2 {
 		t.Fail()
 	} else {
-		log.Debugf("container 1 namespace: %s, container 2 namespace: %s, they're the same!", ns1, ns2)
+		logger.Debugf("container 1 namespace: %s, container 2 namespace: %s, they're the same!", ns1, ns2)
 	}
 	wg.Wait()
 }
 
 func TestPrivateCgroupNs(t *testing.T) {
 	// get the user cgroup ns
-	log := log.NewTestLogger(t)
+	logger := log.NewTestLogger(t)
 	var wg sync.WaitGroup
 	userCgroupNs := tests.GetCommmandCgroupNs("/usr/bin/sleep", []string{"3"})
 	assert.NotNil(t, userCgroupNs)
-	log.Debugf("Detected cgroup namespace for user: %s", userCgroupNs)
+	logger.Debugf("Detected cgroup namespace for user: %s", userCgroupNs)
 
 	containername := fmt.Sprintf("test%s", util.GetRandomString(5))
 	// The first container will run with a private namespace that will be created at startup
@@ -273,8 +259,6 @@ func TestPrivateCgroupNs(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Cleanup(func() {
-		cmd := exec.Command(config.Podman.Path, "container", "rm", containername)
-		cmd.Run()
 		assert.NoError(t, container.Close())
 	})
 
@@ -294,19 +278,19 @@ func TestPrivateCgroupNs(t *testing.T) {
 	if userCgroupNs == podmanCgroupNs {
 		t.Fail()
 	} else {
-		log.Debugf("user cgroup namespace: %s, podman private cgroup namespace: %s, they're different!", userCgroupNs, podmanCgroupNs)
+		logger.Debugf("user cgroup namespace: %s, podman private cgroup namespace: %s, they're different!", userCgroupNs, podmanCgroupNs)
 	}
 }
 
 func TestHostCgroupNs(t *testing.T) {
 	// get the user cgroup ns
-	log := log.NewTestLogger(t)
+	logger := log.NewTestLogger(t)
 	var wg sync.WaitGroup
 
 	userCgroupNs := tests.GetCommmandCgroupNs("/usr/bin/sleep", []string{"3"})
 	assert.NotNil(t, userCgroupNs)
 
-	log.Debugf("Detected cgroup namespace for user: %s", userCgroupNs)
+	logger.Debugf("Detected cgroup namespace for user: %s", userCgroupNs)
 	containername := fmt.Sprintf("test%s", util.GetRandomString(5))
 	// The first container will run with the host namespace
 	configtemplate := fmt.Sprintf(cgroupTemplate, containername, "host")
@@ -315,8 +299,6 @@ func TestHostCgroupNs(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Cleanup(func() {
-		cmd := exec.Command(config.Podman.Path, "container", "rm", containername)
-		cmd.Run()
 		assert.NoError(t, container.Close())
 	})
 
@@ -337,12 +319,12 @@ func TestHostCgroupNs(t *testing.T) {
 	if userCgroupNs != podmanCgroupNs {
 		t.Fail()
 	} else {
-		log.Debugf("user cgroup namespace: %s, podman cgroup namespace: %s, the same!", userCgroupNs, podmanCgroupNs)
+		logger.Debugf("user cgroup namespace: %s, podman cgroup namespace: %s, the same!", userCgroupNs, podmanCgroupNs)
 	}
 }
 
 func TestNamespaceCgroupNs(t *testing.T) {
-	log := log.NewTestLogger(t)
+	logger := log.NewTestLogger(t)
 	containername1 := fmt.Sprintf("test%s", util.GetRandomString(5))
 	// The first container will run with a private namespace that will be created at startup
 	configtemplate1 := fmt.Sprintf(cgroupTemplate, containername1, "private")
@@ -361,14 +343,11 @@ func TestNamespaceCgroupNs(t *testing.T) {
 	// sleeps to wait the first container become ready and attach to its cgroup ns
 	time.Sleep(2 * time.Second)
 
-	var stdoutPid bytes.Buffer
-	cmdGetPid := exec.Command(config.Podman.Path, "ps", "--ns", "--filter", fmt.Sprintf("name=%s", containername1), "--format", "{{.Pid}}")
-	cmdGetPid.Stdout = &stdoutPid
-	cmdGetPid.Run()
+	pid := tests.GetPodmanPsNsWithFormat(config.Podman.Path, containername1, "{{.Pid}}")
 
 	containername2 := fmt.Sprintf("test%s", util.GetRandomString(5))
 	// The second one will join the newly created private namespace of the first container
-	namespacePath := fmt.Sprintf("ns:/proc/%s/ns/cgroup", strings.TrimSuffix(stdoutPid.String(), "\n"))
+	namespacePath := fmt.Sprintf("ns:/proc/%s/ns/cgroup", pid)
 	configtemplate2 := fmt.Sprintf(cgroupTemplate, containername2, namespacePath)
 	connector2, _ := getConnector(t, configtemplate2)
 
@@ -376,10 +355,6 @@ func TestNamespaceCgroupNs(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Cleanup(func() {
-		cmd := exec.Command(config.Podman.Path, "container", "rm", containername1)
-		cmd.Run()
-		cmd = exec.Command(config.Podman.Path, "container", "rm", containername2)
-		cmd.Run()
 		assert.NoError(t, container1.Close())
 		assert.NoError(t, container2.Close())
 	})
@@ -391,24 +366,13 @@ func TestNamespaceCgroupNs(t *testing.T) {
 		assert.NoErrorR[int](t)(container2.Write(containerInput))
 	}()
 
-	var stdoutContainer1 bytes.Buffer
-	var stdoutContainer2 bytes.Buffer
-
-	cmd1 := exec.Command(config.Podman.Path, "ps", "--ns", "--filter", fmt.Sprintf("name=%s", containername1), "--format", "{{.CGROUPNS}}")
-	cmd1.Stdout = &stdoutContainer1
-	cmd1.Run()
-
-	cmd2 := exec.Command(config.Podman.Path, "ps", "--ns", "--filter", fmt.Sprintf("name=%s", containername2), "--format", "{{.CGROUPNS}}")
-	cmd2.Stdout = &stdoutContainer2
-	cmd2.Run()
-	// check that both the container are running in the same namespace
-	ns1 := strings.TrimSuffix(stdoutContainer1.String(), "\n")
-	ns2 := strings.TrimSuffix(stdoutContainer2.String(), "\n")
+	ns1 := tests.GetPodmanPsNsWithFormat(config.Podman.Path, containername1, "{{.CGROUPNS}}")
+	ns2 := tests.GetPodmanPsNsWithFormat(config.Podman.Path, containername2, "{{.CGROUPNS}}")
 	if ns1 != ns2 {
 		t.Fail()
 	} else {
-		log.Debugf("container 1 namespace: %s, container 2 namespace: %s, they're the same!", ns1, ns2)
-		log.Debugf("Container 2 joined the namespace via namespace path: %s", namespacePath)
+		logger.Debugf("container 1 namespace: %s, container 2 namespace: %s, they're the same!", ns1, ns2)
+		logger.Debugf("Container 2 joined the namespace via namespace path: %s", namespacePath)
 	}
 	wg.Wait()
 }
@@ -424,19 +388,15 @@ var networkTemplate = `
 `
 
 func TestNetworkHost(t *testing.T) {
-	// get the user cgroup ns
-	//ifconfig := checkIfconfig(t)
-	log := log.NewTestLogger(t)
+	logger := log.NewTestLogger(t)
 	containername := fmt.Sprintf("test%s", util.GetRandomString(5))
 	// The first container will run with the host namespace
 	configtemplate := fmt.Sprintf(networkTemplate, containername, "host")
-	connector, config := getConnector(t, configtemplate)
+	connector, _ := getConnector(t, configtemplate)
 	plugin, err := connector.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
 	assert.NoError(t, err)
 
 	t.Cleanup(func() {
-		cmd := exec.Command(config.Podman.Path, "container", "rm", containername)
-		cmd.Run()
 		assert.NoError(t, plugin.Close())
 	})
 	var containerInput = []byte("network host\n")
@@ -444,12 +404,12 @@ func TestNetworkHost(t *testing.T) {
 	assert.NoErrorR[int](t)(plugin.Write(containerInput))
 	var ifconfigOut bytes.Buffer
 	// runs ifconfig in the host machine in order to check if the container has exactly the same network configuration
-	//cmd := exec.Command(ifconfig)
 	cmd := exec.Command("/bin/bash", "-c", "ifconfig | grep -P \"^.+:\\s+.+$\" | awk '{ gsub(\":\",\"\");print $1 }'")
 	cmd.Stdout = &ifconfigOut
-	cmd.Run()
+	err = cmd.Run()
+	assert.Nil(t, err)
 	ifconfigOutStr := ifconfigOut.String()
-	log.Infof(ifconfigOutStr)
+	logger.Infof(ifconfigOutStr)
 	readBuffer := readOutputUntil(t, plugin, ifconfigOutStr)
 	if len(readBuffer) == 0 {
 		t.Fatal("the container did not produce any output")
@@ -461,62 +421,34 @@ func TestNetworkHost(t *testing.T) {
 }
 
 func TestNetworkBridge(t *testing.T) {
-	log := log.NewTestLogger(t)
-	checkIfconfig(t)
-	containername := fmt.Sprintf("test%s", util.GetRandomString(5))
-	// The first container will run with the host namespace
-	configtemplate := fmt.Sprintf(networkTemplate, containername, "bridge:ip=10.88.0.123,mac=44:33:22:11:00:99,interface_name=testif0")
-	connector, config := getConnector(t, configtemplate)
-	plugin, err := connector.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
-	assert.NoError(t, err)
-
-	t.Cleanup(func() {
-		cmd := exec.Command(config.Podman.Path, "container", "rm", containername)
-		cmd.Run()
-		assert.NoError(t, plugin.Close())
-	})
-	var containerInput = []byte("network bridge\n")
-	// the test script will output a string containing the desired ip address and mac address filtered by the desired interface name
-	assert.NoErrorR[int](t)(plugin.Write(containerInput))
-	expectedOutput := "10.88.0.123;44:33:22:11:00:99"
-
-	readBuffer := readOutputUntil(t, plugin, expectedOutput)
-	log.Infof(string(readBuffer))
-	if len(readBuffer) == 0 {
-		t.Fatalf("the container did not produce any output")
-	}
-	if strings.Contains(string(readBuffer), expectedOutput) == false {
-		t.Fatalf("expected string not found: %s", expectedOutput)
-	}
+	testNetworking(t, "bridge:ip=10.88.0.123,mac=44:33:22:11:00:99,interface_name=testif0",
+		"network bridge\n",
+		"10.88.0.123;44:33:22:11:00:99",
+	)
 }
 func TestNetworkNone(t *testing.T) {
-	log := log.NewTestLogger(t)
-	checkIfconfig(t)
-	containername := fmt.Sprintf("test%s", util.GetRandomString(5))
-	// The first container will run with the host namespace
-	configtemplate := fmt.Sprintf(networkTemplate, containername, "none")
-	connector, config := getConnector(t, configtemplate)
-	plugin, err := connector.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
+	testNetworking(t, "none", "network none\n", "1;lo")
+}
+
+func TestClose(t *testing.T) {
+	containerName := fmt.Sprintf("test_%s", util.GetRandomString(5))
+	configTemplate := fmt.Sprintf(nameTemplate, containerName)
+	connector, _ := getConnector(t, configTemplate)
+
+	container, err := connector.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
 	assert.NoError(t, err)
 
-	t.Cleanup(func() {
-		cmd := exec.Command(config.Podman.Path, "container", "rm", containername)
-		cmd.Run()
-		assert.NoError(t, plugin.Close())
-	})
-	var containerInput = []byte("network none\n")
-	// the test script will output a string containing the desired ip address and mac address filtered by the desired interface name
-	assert.NoErrorR[int](t)(plugin.Write(containerInput))
-	expectedOutput := "1;lo"
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		var containerInput = []byte("sleep 10\n")
+		assert.NoErrorR[int](t)(container.Write(containerInput))
+	}()
 
-	readBuffer := readOutputUntil(t, plugin, expectedOutput)
-	log.Infof(string(readBuffer))
-	if len(readBuffer) == 0 {
-		t.Fatalf("the container did not produce any output")
-	}
-	if strings.Contains(string(readBuffer), expectedOutput) == false {
-		t.Fatalf("expected string not found: %s", expectedOutput)
-	}
+	time.Sleep(2 * time.Second)
+	err = container.Close()
+	assert.Nil(t, err)
 }
 
 // readOutputUntil helper function, reads from plugin (io.Reader) until finds lookforOutput
@@ -547,4 +479,31 @@ func checkIfconfig(t *testing.T) string {
 		t.Fatalf("impossible to run test: %s , ifconfig not installed, skipping.", t.Name())
 	}
 	return path
+}
+
+func testNetworking(t *testing.T, podmanNetworking string, containerTest string, expectedOutput string) {
+	logger := log.NewTestLogger(t)
+	checkIfconfig(t)
+	containername := fmt.Sprintf("test%s", util.GetRandomString(5))
+	// The first container will run with the host namespace
+	configtemplate := fmt.Sprintf(networkTemplate, containername, podmanNetworking)
+	connector, _ := getConnector(t, configtemplate)
+	plugin, err := connector.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
+	assert.NoError(t, err)
+
+	t.Cleanup(func() {
+		assert.NoError(t, plugin.Close())
+	})
+	var containerInput = []byte(containerTest)
+	// the test script will output a string containing the desired ip address and mac address filtered by the desired interface name
+	assert.NoErrorR[int](t)(plugin.Write(containerInput))
+
+	readBuffer := readOutputUntil(t, plugin, expectedOutput)
+	logger.Infof(string(readBuffer))
+	if len(readBuffer) == 0 {
+		t.Fatalf("the container did not produce any output")
+	}
+	if strings.Contains(string(readBuffer), expectedOutput) == false {
+		t.Fatalf("expected string not found: %s", expectedOutput)
+	}
 }

@@ -49,6 +49,7 @@ func (c *Connector) Deploy(ctx context.Context, image string) (deployer.Plugin, 
 		config:         c.config,
 		stdin:          stdin,
 		stdout:         stdout,
+		logger:         c.logger,
 	}
 
 	return &cliPlugin, nil
@@ -81,15 +82,13 @@ func (c *Connector) pullImage(_ context.Context, image string) error {
 func (c *Connector) unwrapContainerConfig() container.Config {
 	if c.config.Deployment.ContainerConfig != nil {
 		return *c.config.Deployment.ContainerConfig
-	} else {
-		return container.Config{}
 	}
+	return container.Config{}
 }
 
 func (c *Connector) unwrapHostConfig() container.HostConfig {
 	if c.config.Deployment.HostConfig != nil {
 		return *c.config.Deployment.HostConfig
-	} else {
-		return container.HostConfig{}
 	}
+	return container.HostConfig{}
 }
