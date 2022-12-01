@@ -307,6 +307,9 @@ func TestPrivateCgroupNs(t *testing.T) {
 
 func TestHostCgroupNs(t *testing.T) {
 	// get the user cgroup ns
+	if tests.IsRunningOnGithub() {
+		t.Skipf("joining host machine cgroup namespace not supported on GitHub actions")
+	}
 	logger := log.NewTestLogger(t)
 	var wg sync.WaitGroup
 
