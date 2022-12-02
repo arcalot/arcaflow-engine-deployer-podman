@@ -1,7 +1,6 @@
 package podman
 
 import (
-	"arcaflow-engine-deployer-podman/internal/util"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -14,10 +13,12 @@ import (
 	"testing"
 	"time"
 
-	"arcaflow-engine-deployer-podman/tests"
+	"go.flow.arcalot.io/podmandeployer/internal/util"
+
 	"go.arcalot.io/assert"
 	"go.arcalot.io/log"
 	"go.flow.arcalot.io/deployer"
+	"go.flow.arcalot.io/podmandeployer/tests"
 )
 
 func getConnector(t *testing.T, configJSON string) (deployer.Connector, *Config) {

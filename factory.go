@@ -1,12 +1,13 @@
 package podman
 
 import (
-	"arcaflow-engine-deployer-podman/internal/cliwrapper"
-	"arcaflow-engine-deployer-podman/internal/util"
 	"fmt"
+
 	"go.arcalot.io/log"
 	"go.flow.arcalot.io/deployer"
 	"go.flow.arcalot.io/pluginsdk/schema"
+	"go.flow.arcalot.io/podmandeployer/internal/cliwrapper"
+	"go.flow.arcalot.io/podmandeployer/internal/util"
 )
 
 // NewFactory creates a new factory for the Docker deployer.

@@ -2,12 +2,13 @@ package cliwrapper
 
 import (
 	"fmt"
-	"go.arcalot.io/log"
 	"os/exec"
 	"testing"
 
-	"arcaflow-engine-deployer-podman/tests"
+	"go.arcalot.io/log"
+
 	"go.arcalot.io/assert"
+	"go.flow.arcalot.io/podmandeployer/tests"
 )
 
 func TestPodman_ImageExists(t *testing.T) {
