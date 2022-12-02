@@ -1,9 +1,10 @@
 package podman
 
 import (
-	"arcaflow-engine-deployer-podman/internal/cliwrapper"
-	"go.arcalot.io/log"
 	"io"
+
+	"go.arcalot.io/log"
+	"go.flow.arcalot.io/podmandeployer/internal/cliwrapper"
 )
 
 type CliPlugin struct {

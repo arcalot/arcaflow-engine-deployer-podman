@@ -1,13 +1,15 @@
 package podman
 
 import (
-	"arcaflow-engine-deployer-podman/internal/util"
 	"os/exec"
+
+	"go.flow.arcalot.io/podmandeployer/internal/util"
+
+	"regexp"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	"go.flow.arcalot.io/pluginsdk/schema"
-	"regexp"
 )
 
 func podmanGetDefaultPath() string {
