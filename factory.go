@@ -19,7 +19,7 @@ type factory struct {
 }
 
 func (f factory) ID() string {
-	return "docker"
+	return "podman"
 }
 
 func (f factory) ConfigurationSchema() *schema.TypedScopeSchema[*Config] {
