@@ -86,13 +86,12 @@ func GetCommmandCgroupNs(logger log.Logger, command string, args []string) strin
 		if err := cmd2.Run(); err != nil {
 			logger.Errorf(err.Error())
 		}
-		userCgroupNs = strings.Split(stdout.String(), " ")[10]
+		stdoutStr:=stdout.String()
+		regex:=regexp.MustCompile(`.*cgroup:\[(\d+)\]`)
+		userCgroupNs = regex.ReplaceAllString(stdoutStr,"$1")
+		userCgroupNs = strings.TrimSuffix(userCgroupNs, "\n")
 	}()
 	wg.Wait()
-	// removes linux cgroup notation
-	regex := regexp.MustCompile(`cgroup:\[(\d+)\]`)
-	userCgroupNs = regex.ReplaceAllString(userCgroupNs, "$1")
-	userCgroupNs = strings.TrimSuffix(userCgroupNs, "\n")
 	return userCgroupNs
 }
 
