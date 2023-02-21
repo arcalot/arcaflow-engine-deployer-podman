@@ -9,7 +9,8 @@ type CliWrapper interface {
 	PullImage(image string, platform *string) error
 	Deploy(
 		image string,
-		args []string,
+		podmanArgs []string,
+		containerArgs []string,
 	) (io.WriteCloser, io.ReadCloser, error)
 	KillAndClean(containerName string) error
 }
