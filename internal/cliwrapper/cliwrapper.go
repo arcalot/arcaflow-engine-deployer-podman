@@ -63,10 +63,11 @@ func (p *cliWrapper) PullImage(image string, platform *string) error {
 	return nil
 }
 
-func (p *cliWrapper) Deploy(image string, args []string) (io.WriteCloser, io.ReadCloser, error) {
+func (p *cliWrapper) Deploy(image string, podmanArgs []string, containerArgs []string) (io.WriteCloser, io.ReadCloser, error) {
 	image = p.decorateImageName(image)
-	args = append(args, image)
-	p.deployCommand = exec.Command(p.podmanFullPath, args...) //nolint:gosec
+	podmanArgs = append(podmanArgs, image)
+	podmanArgs = append(podmanArgs, containerArgs...)
+	p.deployCommand = exec.Command(p.podmanFullPath, podmanArgs...) //nolint:gosec
 	stdin, err := p.deployCommand.StdinPipe()
 	if err != nil {
 		return nil, nil, err
