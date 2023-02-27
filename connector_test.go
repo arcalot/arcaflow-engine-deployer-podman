@@ -16,7 +16,7 @@ import (
 	"go.flow.arcalot.io/podmandeployer/internal/util"
 
 	"go.arcalot.io/assert"
-	"go.arcalot.io/log"
+	log "go.arcalot.io/log/v2"
 	"go.flow.arcalot.io/deployer"
 	"go.flow.arcalot.io/podmandeployer/tests"
 )

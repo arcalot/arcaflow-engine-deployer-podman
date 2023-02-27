@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/joho/godotenv"
-	"go.arcalot.io/log"
+	log "go.arcalot.io/log/v2"
 	"os"
 	"os/exec"
 	"regexp"

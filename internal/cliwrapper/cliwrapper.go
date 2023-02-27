@@ -8,7 +8,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"go.arcalot.io/log"
+	log "go.arcalot.io/log/v2"
 	"go.flow.arcalot.io/podmandeployer/internal/util"
 )
 

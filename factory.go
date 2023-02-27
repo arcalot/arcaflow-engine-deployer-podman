@@ -3,7 +3,7 @@ package podman
 import (
 	"fmt"
 
-	"go.arcalot.io/log"
+	log "go.arcalot.io/log/v2"
 	"go.flow.arcalot.io/deployer"
 	"go.flow.arcalot.io/pluginsdk/schema"
 	"go.flow.arcalot.io/podmandeployer/internal/cliwrapper"
