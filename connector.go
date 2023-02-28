@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/docker/docker/api/types/container"
-	"go.arcalot.io/log"
+	log "go.arcalot.io/log/v2"
 	"go.flow.arcalot.io/deployer"
 	args "go.flow.arcalot.io/podmandeployer/internal/argsbuilder"
 	"go.flow.arcalot.io/podmandeployer/internal/cliwrapper"

@@ -5,7 +5,7 @@ import (
 	"os/exec"
 	"testing"
 
-	"go.arcalot.io/log"
+	log "go.arcalot.io/log/v2"
 
 	"go.arcalot.io/assert"
 	"go.flow.arcalot.io/podmandeployer/tests"
