@@ -2,6 +2,7 @@ package podman
 
 import (
 	"fmt"
+	"os/exec"
 
 	log "go.arcalot.io/log/v2"
 	"go.flow.arcalot.io/deployer"
@@ -27,7 +28,11 @@ func (f factory) ConfigurationSchema() *schema.TypedScopeSchema[*Config] {
 }
 
 func (f factory) Create(config *Config, logger log.Logger) (deployer.Connector, error) {
-	podman := cliwrapper.NewCliWrapper(config.Podman.Path, logger)
+	path, err := exec.LookPath(config.Podman.Path)
+	if err != nil {
+		return &Connector{}, err
+	}
+	podman := cliwrapper.NewCliWrapper(path, logger)
 	var containerName string
 	if config.Podman.ContainerName == "" {
 		containerName = fmt.Sprintf("arcaflow_podman_%s", util.GetRandomString(5))
