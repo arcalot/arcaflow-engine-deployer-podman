@@ -30,7 +30,6 @@ func (f factory) ConfigurationSchema() *schema.TypedScopeSchema[*Config] {
 func (f factory) Create(config *Config, logger log.Logger) (deployer.Connector, error) {
 	path, err := exec.LookPath(config.Podman.Path)
 	if err != nil {
-
 		return &Connector{}, fmt.Errorf("Podman executable not found in a valid path. Returning with error: %v", err)
 	}
 	podman := cliwrapper.NewCliWrapper(path, logger)
