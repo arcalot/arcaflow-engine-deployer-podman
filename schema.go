@@ -15,7 +15,7 @@ import (
 func podmanGetDefaultPath() string {
 	path, err := exec.LookPath("podman")
 	if err != nil {
-		panic("podman binary not found in $PATH, please provide it in configuration")
+		path = "/usr/bin/podman"
 	}
 	return path
 }
