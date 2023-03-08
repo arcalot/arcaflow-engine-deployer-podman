@@ -2,7 +2,9 @@ package podman
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 
 	log "go.arcalot.io/log/v2"
 	"go.flow.arcalot.io/deployer"
@@ -28,11 +30,11 @@ func (f factory) ConfigurationSchema() *schema.TypedScopeSchema[*Config] {
 }
 
 func (f factory) Create(config *Config, logger log.Logger) (deployer.Connector, error) {
-	path, err := exec.LookPath(config.Podman.Path)
+	podmanPath, err := binaryCheck(config.Podman.Path)
 	if err != nil {
-		return &Connector{}, fmt.Errorf("Podman executable not found in a valid path. Returning with error: %v", err)
+		return &Connector{}, fmt.Errorf("podman binary check failed with error: %w", err)
 	}
-	podman := cliwrapper.NewCliWrapper(path, logger)
+	podman := cliwrapper.NewCliWrapper(podmanPath, logger)
 	var containerName string
 	if config.Podman.ContainerName == "" {
 		containerName = fmt.Sprintf("arcaflow_podman_%s", util.GetRandomString(5))
@@ -45,4 +47,22 @@ func (f factory) Create(config *Config, logger log.Logger) (deployer.Connector, 
 		podmanCliWrapper: podman,
 		containerName:    containerName,
 	}, nil
+}
+
+func binaryCheck(podmanPath string) (string, error) {
+	if podmanPath == "" {
+		podmanPath = "podman"
+	}
+	if !filepath.IsAbs(podmanPath) {
+		podmanPathAbs, err := exec.LookPath(podmanPath)
+		if err != nil {
+			return "", fmt.Errorf("podman executable not found in a valid path with error: %w", err)
+
+		}
+		podmanPath = podmanPathAbs
+	}
+	if _, err := os.Stat(podmanPath); err != nil {
+		return "", fmt.Errorf("podman binary not found with error: %w", err)
+	}
+	return podmanPath, nil
 }
