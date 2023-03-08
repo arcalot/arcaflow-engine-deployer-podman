@@ -15,7 +15,7 @@ import (
 func podmanGetDefaultPath() string {
 	path, err := exec.LookPath("podman")
 	if err != nil {
-		path = "/usr/bin/podman"
+		path = ""
 	}
 	return path
 }
