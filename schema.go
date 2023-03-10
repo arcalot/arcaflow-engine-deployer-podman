@@ -1,8 +1,6 @@
 package podman
 
 import (
-	"os/exec"
-
 	"go.flow.arcalot.io/podmandeployer/internal/util"
 
 	"regexp"
@@ -11,14 +9,6 @@ import (
 	"github.com/docker/go-connections/nat"
 	"go.flow.arcalot.io/pluginsdk/schema"
 )
-
-func podmanGetDefaultPath() string {
-	path, err := exec.LookPath("podman")
-	if err != nil {
-		path = ""
-	}
-	return path
-}
 
 // Schema describes the deployment options of the Docker deployment mechanism.
 var Schema = schema.NewTypedScopeSchema[*Config](
@@ -65,7 +55,7 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 				nil,
 				nil,
 				nil,
-				schema.PointerTo(util.JSONEncode(podmanGetDefaultPath())),
+				schema.PointerTo(util.JSONEncode("podman")),
 				nil,
 			),
 			"containerName": schema.NewPropertySchema(
