@@ -96,7 +96,7 @@ func TestEnv(t *testing.T) {
 	t.Cleanup(func() {
 		assert.NoError(t, container.Close())
 	})
-
+	
 	var containerInput = []byte("env\n")
 
 	assert.NoErrorR[int](t)(container.Write(containerInput))
@@ -183,6 +183,8 @@ func TestContainerName(t *testing.T) {
 	//logger := log.NewTestLogger(t)
 	//ContainerNameRoot := fmt.Sprintf("test_%s", util.GetRandomString(5))
 	//configTemplate := fmt.Sprintf(nameTemplate, ContainerNameRoot)
+	//seed := int64(1)
+	//rng := *rand.New(rand.NewSource(seed))
 	configTemplate := defaultTemplate
 	ctx := context.Background()
 	connector, _ := getConnector(t, configTemplate)
