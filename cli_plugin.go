@@ -10,7 +10,7 @@ import (
 type CliPlugin struct {
 	wrapper        cliwrapper.CliWrapper
 	containerImage string
-	containerName  string
+	ContainerName  string
 	config         *Config
 	logger         log.Logger
 	stdin          io.WriteCloser
@@ -28,7 +28,7 @@ func (p *CliPlugin) Read(b []byte) (n int, err error) {
 }
 
 func (p *CliPlugin) Close() error {
-	if err := p.wrapper.KillAndClean(p.containerName); err != nil {
+	if err := p.wrapper.KillAndClean(p.ContainerName); err != nil {
 		return err
 	}
 

@@ -2,19 +2,23 @@ package podman
 
 import (
 	"context"
-
+	"fmt"
 	"github.com/docker/docker/api/types/container"
 	log "go.arcalot.io/log/v2"
 	"go.flow.arcalot.io/deployer"
 	args "go.flow.arcalot.io/podmandeployer/internal/argsbuilder"
 	"go.flow.arcalot.io/podmandeployer/internal/cliwrapper"
+	"go.flow.arcalot.io/podmandeployer/internal/util"
+	"math/rand"
 )
 
 type Connector struct {
-	containerName    string
-	config           *Config
-	logger           log.Logger
-	podmanCliWrapper cliwrapper.CliWrapper
+	containerNameRoot string
+	config            *Config
+	logger            log.Logger
+	podmanCliWrapper  cliwrapper.CliWrapper
+	rng               *rand.Rand
+	seed              int64
 }
 
 func (c *Connector) Deploy(ctx context.Context, image string) (deployer.Plugin, error) {
@@ -30,8 +34,10 @@ func (c *Connector) Deploy(ctx context.Context, image string) (deployer.Plugin, 
 	hostConfig := c.unwrapHostConfig()
 	commandArgs := []string{"run", "-i", "-a", "stdin", "-a", "stdout", "-a", "stderr"}
 
+	containerName := c.NextContainerName(c.containerNameRoot, 10)
+	//containerName := c.containerNameRoot
 	args.NewBuilder(&commandArgs).
-		SetContainerName(c.containerName).
+		SetContainerName(containerName).
 		SetEnv(containerConfig.Env).
 		SetVolumes(hostConfig.Binds).
 		SetCgroupNs(c.config.Podman.CgroupNs).
@@ -46,7 +52,7 @@ func (c *Connector) Deploy(ctx context.Context, image string) (deployer.Plugin, 
 	cliPlugin := CliPlugin{
 		wrapper:        c.podmanCliWrapper,
 		containerImage: image,
-		containerName:  c.containerName,
+		ContainerName:  containerName,
 		config:         c.config,
 		stdin:          stdin,
 		stdout:         stdout,
@@ -92,4 +98,8 @@ func (c *Connector) unwrapHostConfig() container.HostConfig {
 		return *c.config.Deployment.HostConfig
 	}
 	return container.HostConfig{}
+}
+
+func (c *Connector) NextContainerName(container_id string, random_str_size int) string {
+	return fmt.Sprintf("%s_%s", container_id, util.GetRandomString(c.rng, random_str_size))
 }
