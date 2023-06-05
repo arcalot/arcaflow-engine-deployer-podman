@@ -52,7 +52,7 @@ func (c *Connector) Deploy(ctx context.Context, image string) (deployer.Plugin, 
 	cliPlugin := CliPlugin{
 		wrapper:        c.podmanCliWrapper,
 		containerImage: image,
-		ContainerName:  containerName,
+		containerName:  containerName,
 		config:         c.config,
 		stdin:          stdin,
 		stdout:         stdout,

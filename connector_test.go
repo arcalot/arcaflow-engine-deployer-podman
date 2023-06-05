@@ -96,7 +96,7 @@ func TestEnv(t *testing.T) {
 	t.Cleanup(func() {
 		assert.NoError(t, container.Close())
 	})
-	
+
 	var containerInput = []byte("env\n")
 
 	assert.NoErrorR[int](t)(container.Write(containerInput))
@@ -171,55 +171,51 @@ var nameTemplate = `
 }
 `
 
-var defaultTemplate = `
-{
-   "podman":{
-      "path":"/usr/bin/podman"
-   }
-}
-`
-
 func TestContainerName(t *testing.T) {
-	//logger := log.NewTestLogger(t)
-	//ContainerNameRoot := fmt.Sprintf("test_%s", util.GetRandomString(5))
-	//configTemplate := fmt.Sprintf(nameTemplate, ContainerNameRoot)
-	//seed := int64(1)
-	//rng := *rand.New(rand.NewSource(seed))
-	configTemplate := defaultTemplate
+	logger := log.NewTestLogger(t)
+	configTemplate1 := fmt.Sprintf(nameTemplate, "test_1")
+	configTemplate2 := fmt.Sprintf(nameTemplate, "test_2")
+
 	ctx := context.Background()
-	connector, _ := getConnector(t, configTemplate)
+	connector1, cfg1 := getConnector(t, configTemplate1)
+	connector2, cfg2 := getConnector(t, configTemplate2)
 
-	container, err := connector.Deploy(
+	container1, err := connector1.Deploy(
 		ctx,
 		"quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
 	assert.NoError(t, err)
-	//containerName1 := container.ContainerNameRoot
 
-	container2, err := connector.Deploy(
+	container2, err := connector2.Deploy(
 		ctx,
 		"quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
 	assert.NoError(t, err)
-	//containerName2 := container2.ContainerNameRoot
-
-	t.Cleanup(func() {
-		assert.NoError(t, container.Close())
-		assert.NoError(t, container2.Close())
-	})
 
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		var containerInput = []byte("sleep 3\n")
-		assert.NoErrorR[int](t)(container.Write(containerInput))
+		assert.NoErrorR[int](t)(container1.Write(containerInput))
 		assert.NoErrorR[int](t)(container2.Write(containerInput))
 	}()
-	//time.Sleep(1 * time.Second)
-	//if tests.IsContainerRunning(logger, config.Podman.Path, containerNameRoot) == false {
-	//	t.Fatalf("container with name %s not found", containerNameRoot)
-	//}
+
+	time.Sleep(1 * time.Second)
+	if tests.IsContainerRunning(logger, cfg1.Podman.Path, container1.ID()) == false {
+		t.Fatalf("container with name %s not found", container1.ID())
+	}
+	time.Sleep(1 * time.Second)
+	if tests.IsContainerRunning(logger, cfg2.Podman.Path, container2.ID()) == false {
+		t.Fatalf("container with name %s not found", container2.ID())
+	}
 
 	wg.Wait()
+
+	assert.Equals(t, true, container1.ID() != container2.ID())
+
+	t.Cleanup(func() {
+		assert.NoError(t, container1.Close())
+		assert.NoError(t, container2.Close())
+	})
 }
 
 var cgroupTemplate = `
@@ -237,28 +233,28 @@ func TestCgroupNsByContainerName(t *testing.T) {
 		t.Skipf("joining another container cgroup namespace by container name not supported on GitHub actions")
 	}
 	logger := log.NewTestLogger(t)
-	seed := int64(1)
-	rng := *rand.New(rand.NewSource(seed))
-	containername1 := fmt.Sprintf("test%s", util.GetRandomString(&rng, 5))
+	//seed := int64(1)
+	//rng := *rand.New(rand.NewSource(seed))
+	//containername1 := fmt.Sprintf("test%s", util.GetRandomString(&rng, 5))
+	containernameroot1 := "test_1"
 	// The first container will run with a private namespace that will be created at startup
-	configtemplate1 := fmt.Sprintf(cgroupTemplate, containername1, "private")
+	configtemplate1 := fmt.Sprintf(cgroupTemplate, containernameroot1, "private")
 	connector1, config := getConnector(t, configtemplate1)
 	container1, err := connector1.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
-	containername2 := fmt.Sprintf("test%s", util.GetRandomString(&rng, 5))
+	assert.NoError(t, err)
+	//if err != nil {
+	//	t.Fatalf(err.Error())
+	//}
+
+	containernameroot2 := "test_2"
 	// The second one will join the newly created private namespace of the first container
-	configtemplate2 := fmt.Sprintf(cgroupTemplate, containername2, fmt.Sprintf("container:%s", containername1))
+	configtemplate2 := fmt.Sprintf(cgroupTemplate, containernameroot2, fmt.Sprintf("container:%s", container1.ID()))
 	connector2, _ := getConnector(t, configtemplate2)
 	container2, err := connector2.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
-	t.Cleanup(func() {
-		assert.NoError(t, container1.Close())
-		assert.NoError(t, container2.Close())
-	})
+	//if err != nil {
+	//	t.Fatalf(err.Error())
+	//}
+	assert.NoError(t, err)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -283,36 +279,36 @@ func TestCgroupNsByContainerName(t *testing.T) {
 			return
 		}
 	}()
-	ns1 := tests.GetPodmanPsNsWithFormat(logger, config.Podman.Path, containername1, "{{.CGROUPNS}}")
-	ns2 := tests.GetPodmanPsNsWithFormat(logger, config.Podman.Path, containername2, "{{.CGROUPNS}}")
+	ns1 := tests.GetPodmanPsNsWithFormat(logger, config.Podman.Path, container1.ID(), "{{.CGROUPNS}}")
+	ns2 := tests.GetPodmanPsNsWithFormat(logger, config.Podman.Path, container2.ID(), "{{.CGROUPNS}}")
 	if ns1 != ns2 {
 		t.Errorf("namespace1: %s and namespace2: %s do not match, failing", ns1, ns2)
 	} else {
 		logger.Debugf("container 1 namespace: %s, container 2 namespace: %s, they're the same!", ns1, ns2)
 	}
 	wg.Wait()
+
+	t.Cleanup(func() {
+		assert.NoError(t, container1.Close())
+		assert.NoError(t, container2.Close())
+	})
 }
 
 func TestPrivateCgroupNs(t *testing.T) {
 	// get the user cgroup ns
 	logger := log.NewTestLogger(t)
-	seed := int64(1)
-	rng := *rand.New(rand.NewSource(seed))
+
 	var wg sync.WaitGroup
 	userCgroupNs := tests.GetCommmandCgroupNs(logger, "/usr/bin/sleep", []string{"3"})
 	assert.NotNil(t, userCgroupNs)
 	logger.Debugf("Detected cgroup namespace for user: %s", userCgroupNs)
 
-	containername := fmt.Sprintf("test%s", util.GetRandomString(&rng, 5))
+	containernameroot := "test"
 	// The first container will run with a private namespace that will be created at startup
-	configtemplate := fmt.Sprintf(cgroupTemplate, containername, "private")
+	configtemplate := fmt.Sprintf(cgroupTemplate, containernameroot, "private")
 	connector, config := getConnector(t, configtemplate)
 	container, err := connector.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
 	assert.NoError(t, err)
-
-	t.Cleanup(func() {
-		assert.NoError(t, container.Close())
-	})
 
 	wg.Add(1)
 	go func() {
@@ -323,7 +319,7 @@ func TestPrivateCgroupNs(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	var podmanCgroupNs = tests.GetPodmanCgroupNs(logger, config.Podman.Path, containername)
+	var podmanCgroupNs = tests.GetPodmanCgroupNs(logger, config.Podman.Path, container.ID())
 	wg.Wait()
 
 	// if the user's namespace is equal to the podman one the test must fail
@@ -332,28 +328,27 @@ func TestPrivateCgroupNs(t *testing.T) {
 	} else {
 		logger.Debugf("user cgroup namespace: %s, podman private cgroup namespace: %s, they're different!", userCgroupNs, podmanCgroupNs)
 	}
+
+	t.Cleanup(func() {
+		assert.NoError(t, container.Close())
+	})
 }
 
 func TestHostCgroupNs(t *testing.T) {
 	logger := log.NewTestLogger(t)
-	seed := int64(1)
-	rng := *rand.New(rand.NewSource(seed))
 	var wg sync.WaitGroup
 
 	userCgroupNs := tests.GetCommmandCgroupNs(logger, "/usr/bin/sleep", []string{"3"})
 	assert.NotNil(t, userCgroupNs)
 
 	logger.Debugf("Detected cgroup namespace for user: %s", userCgroupNs)
-	containername := fmt.Sprintf("test%s", util.GetRandomString(&rng, 5))
+	//containername := fmt.Sprintf("test%s", util.GetRandomString(&rng, 5))
+	containernameroot := "test"
 	// The first container will run with the host namespace
-	configtemplate := fmt.Sprintf(cgroupTemplate, containername, "host")
+	configtemplate := fmt.Sprintf(cgroupTemplate, containernameroot, "host")
 	connector, config := getConnector(t, configtemplate)
 	container, err := connector.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
 	assert.NoError(t, err)
-
-	t.Cleanup(func() {
-		assert.NoError(t, container.Close())
-	})
 
 	wg.Add(1)
 	go func() {
@@ -365,7 +360,7 @@ func TestHostCgroupNs(t *testing.T) {
 	// waits for the container to become ready
 	time.Sleep(2 * time.Second)
 
-	var podmanCgroupNs = tests.GetPodmanCgroupNs(logger, config.Podman.Path, containername)
+	var podmanCgroupNs = tests.GetPodmanCgroupNs(logger, config.Podman.Path, container.ID())
 	assert.NotNil(t, podmanCgroupNs)
 	wg.Wait()
 	// if the container is running in a different cgroup namespace than the user the test must fail
@@ -374,6 +369,10 @@ func TestHostCgroupNs(t *testing.T) {
 	} else {
 		logger.Debugf("user cgroup namespace: %s, podman cgroup namespace: %s, the same!", userCgroupNs, podmanCgroupNs)
 	}
+
+	t.Cleanup(func() {
+		assert.NoError(t, container.Close())
+	})
 }
 
 func TestCgroupNsByNamespacePath(t *testing.T) {
@@ -381,14 +380,13 @@ func TestCgroupNsByNamespacePath(t *testing.T) {
 		t.Skipf("joining another container cgroup namespace by namespace path ns:/proc/<PID>/ns/cgroup not supported on GitHub actions")
 	}
 	logger := log.NewTestLogger(t)
-	seed := int64(1)
-	rng := *rand.New(rand.NewSource(seed))
-	containername1 := fmt.Sprintf("test%s", util.GetRandomString(&rng, 5))
+	containernameroot1 := "test_1"
 	// The first container will run with a private namespace that will be created at startup
-	configtemplate1 := fmt.Sprintf(cgroupTemplate, containername1, "private")
+	configtemplate1 := fmt.Sprintf(cgroupTemplate, containernameroot1, "private")
 	connector1, config := getConnector(t, configtemplate1)
 	container1, err := connector1.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
 	assert.NoError(t, err)
+
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
@@ -402,9 +400,9 @@ func TestCgroupNsByNamespacePath(t *testing.T) {
 	// sleeps to wait the first container become ready and attach to its cgroup ns
 	time.Sleep(2 * time.Second)
 
-	pid := tests.GetPodmanPsNsWithFormat(logger, config.Podman.Path, containername1, "{{.Pid}}")
+	pid := tests.GetPodmanPsNsWithFormat(logger, config.Podman.Path, container1.ID(), "{{.Pid}}")
 
-	containername2 := fmt.Sprintf("test%s", util.GetRandomString(&rng, 5))
+	containername2 := "test_2"
 	// The second one will join the newly created private namespace of the first container
 	namespacePath := fmt.Sprintf("ns:/proc/%s/ns/cgroup", pid)
 	configtemplate2 := fmt.Sprintf(cgroupTemplate, containername2, namespacePath)
@@ -414,11 +412,6 @@ func TestCgroupNsByNamespacePath(t *testing.T) {
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-
-	t.Cleanup(func() {
-		assert.NoError(t, container1.Close())
-		assert.NoError(t, container2.Close())
-	})
 
 	wg.Add(1)
 	go func() {
@@ -430,8 +423,8 @@ func TestCgroupNsByNamespacePath(t *testing.T) {
 		}
 	}()
 
-	ns1 := tests.GetPodmanPsNsWithFormat(logger, config.Podman.Path, containername1, "{{.CGROUPNS}}")
-	ns2 := tests.GetPodmanPsNsWithFormat(logger, config.Podman.Path, containername2, "{{.CGROUPNS}}")
+	ns1 := tests.GetPodmanPsNsWithFormat(logger, config.Podman.Path, container1.ID(), "{{.CGROUPNS}}")
+	ns2 := tests.GetPodmanPsNsWithFormat(logger, config.Podman.Path, container1.ID(), "{{.CGROUPNS}}")
 	if ns1 != ns2 {
 		t.Errorf("namespace1: %s and namespace2: %s do not match, failing", ns1, ns2)
 	} else {
@@ -439,6 +432,11 @@ func TestCgroupNsByNamespacePath(t *testing.T) {
 		logger.Debugf("Container 2 joined the namespace via namespace path: %s", namespacePath)
 	}
 	wg.Wait()
+
+	t.Cleanup(func() {
+		assert.NoError(t, container1.Close())
+		assert.NoError(t, container2.Close())
+	})
 }
 
 var networkTemplate = `
@@ -453,18 +451,13 @@ var networkTemplate = `
 
 func TestNetworkHost(t *testing.T) {
 	logger := log.NewTestLogger(t)
-	seed := int64(1)
-	rng := *rand.New(rand.NewSource(seed))
-	containername := fmt.Sprintf("test%s", util.GetRandomString(&rng, 5))
+	containernameroot := "test"
 	// The first container will run with the host namespace
-	configtemplate := fmt.Sprintf(networkTemplate, containername, "host")
+	configtemplate := fmt.Sprintf(networkTemplate, containernameroot, "host")
 	connector, _ := getConnector(t, configtemplate)
 	plugin, err := connector.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
 	assert.NoError(t, err)
 
-	t.Cleanup(func() {
-		assert.NoError(t, plugin.Close())
-	})
 	var containerInput = []byte("network host\n")
 	// the test script will run "ifconfig" in the container
 	assert.NoErrorR[int](t)(plugin.Write(containerInput))
@@ -484,6 +477,10 @@ func TestNetworkHost(t *testing.T) {
 	if strings.Contains(containerOutString, ifconfigOutStr) == false {
 		t.Fatalf("expected string not found: %s", ifconfigOutStr)
 	}
+
+	t.Cleanup(func() {
+		assert.NoError(t, plugin.Close())
+	})
 }
 
 func TestNetworkBridge(t *testing.T) {
@@ -569,20 +566,18 @@ func checkIfconfig(t *testing.T) string {
 func testNetworking(t *testing.T, podmanNetworking string, containerTest string, expectedOutput *string, ip *string, mac *string) {
 	logger := log.NewTestLogger(t)
 	checkIfconfig(t)
-	seed := int64(1)
-	rng := *rand.New(rand.NewSource(seed))
-	containername := fmt.Sprintf("test%s", util.GetRandomString(&rng, 5))
+	//seed := int64(1)
+	//rng := *rand.New(rand.NewSource(seed))
+	//containername := fmt.Sprintf("test%s", util.GetRandomString(&rng, 5))
+	containernameroot := "test"
 	// The first container will run with the host namespace
-	configtemplate := fmt.Sprintf(networkTemplate, containername, podmanNetworking)
+	configtemplate := fmt.Sprintf(networkTemplate, containernameroot, podmanNetworking)
 	connector, _ := getConnector(t, configtemplate)
 	plugin, err := connector.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
 
-	t.Cleanup(func() {
-		assert.NoError(t, plugin.Close())
-	})
 	var containerInput = []byte(containerTest)
 	// the test script will output a string containing the desired ip address and mac address filtered by the desired interface name
 	if _, err := plugin.Write(containerInput); err != nil {
@@ -613,4 +608,8 @@ func testNetworking(t *testing.T, podmanNetworking string, containerTest string,
 			t.Fatalf("expected string not found: %s, %s found instead", *mac, string(readBuffer))
 		}
 	}
+
+	t.Cleanup(func() {
+		assert.NoError(t, plugin.Close())
+	})
 }
