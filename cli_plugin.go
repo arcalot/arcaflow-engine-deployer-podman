@@ -27,10 +27,6 @@ func (p *CliPlugin) Read(b []byte) (n int, err error) {
 	return p.stdout.Read(b)
 }
 
-func (p *CliPlugin) ID() string {
-	return p.ContainerName
-}
-
 func (p *CliPlugin) Close() error {
 	if err := p.wrapper.KillAndClean(p.ContainerName); err != nil {
 		return err
