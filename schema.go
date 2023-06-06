@@ -58,7 +58,7 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 				schema.PointerTo(util.JSONEncode("podman")),
 				nil,
 			),
-			"ContainerNameRoot": schema.NewPropertySchema(
+			"ContainerNamePrefix": schema.NewPropertySchema(
 				schema.NewStringSchema(nil, nil, regexp.MustCompile("^.*$")),
 				schema.NewDisplayValue(schema.PointerTo("Container Name Root"), schema.PointerTo("Provides root name of the container"), nil),
 				false,
@@ -68,9 +68,9 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 				nil,
 				nil,
 			),
-			"Seed": schema.NewPropertySchema(
+			"RngSeed": schema.NewPropertySchema(
 				schema.NewIntSchema(nil, nil, nil),
-				schema.NewDisplayValue(schema.PointerTo("Seed"), schema.PointerTo("Random String Generator Seed"), nil),
+				schema.NewDisplayValue(schema.PointerTo("RngSeed"), schema.PointerTo("Random String Generator RngSeed"), nil),
 				false,
 				nil,
 				nil,

@@ -31,13 +31,13 @@ const (
 )
 
 type Podman struct {
-	Path              string `json:"path"`
-	ContainerNameRoot string `json:"ContainerNameRoot"`
-	CgroupNs          string `json:"cgroupNs"`
-	NetworkMode       string `json:"networkMode"`
-	ImageArchitecture string `json:"imageArchitecture"`
-	ImageOS           string `json:"imageOS"`
-	Seed              int64  `json:"seed"`
+	Path                string `json:"path"`
+	ContainerNamePrefix string `json:"ContainerNamePrefix"`
+	CgroupNs            string `json:"cgroupNs"`
+	NetworkMode         string `json:"networkMode"`
+	ImageArchitecture   string `json:"imageArchitecture"`
+	ImageOS             string `json:"imageOS"`
+	RngSeed             int64  `json:"RngSeed"`
 }
 
 // Deployment contains the information about deploying the plugin.

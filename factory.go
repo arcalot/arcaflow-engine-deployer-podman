@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
 	"time"
 
 	log "go.arcalot.io/log/v2"
@@ -38,27 +39,28 @@ func (f factory) Create(config *Config, logger log.Logger) (deployer.Connector, 
 	podman := cliwrapper.NewCliWrapper(podmanPath, logger)
 
 	var seed int64
-	if config.Podman.Seed == 0 {
+	if config.Podman.RngSeed == 0 {
 		seed = time.Now().UnixNano()
 	} else {
-		seed = config.Podman.Seed
+		seed = config.Podman.RngSeed
 	}
 	rng := rand.New(rand.NewSource(seed))
 
 	var containerNameRoot string
-	if config.Podman.ContainerNameRoot == "" {
+	if config.Podman.ContainerNamePrefix == "" {
 		containerNameRoot = "arcaflow_podman"
 	} else {
-		containerNameRoot = config.Podman.ContainerNameRoot
+		containerNameRoot = config.Podman.ContainerNamePrefix
 	}
 
 	return &Connector{
-		config:            config,
-		logger:            logger,
-		podmanCliWrapper:  podman,
-		containerNameRoot: containerNameRoot,
-		rng:               rng,
-		seed:              seed,
+		config:              config,
+		logger:              logger,
+		podmanCliWrapper:    podman,
+		containerNamePrefix: containerNameRoot,
+		rng:                 rng,
+		seed:                seed,
+		lock:                &sync.Mutex{},
 	}, nil
 }
 

@@ -166,7 +166,7 @@ var nameTemplate = `
 {
   "podman":{
      "path":"/usr/bin/podman",
-     "ContainerNameRoot":"%s"
+     "ContainerNamePrefix":"%s"
   }
 }
 `
@@ -222,7 +222,7 @@ var cgroupTemplate = `
 {
    "podman":{
       "path":"/usr/bin/podman",
-      "ContainerNameRoot":"%s",
+      "ContainerNamePrefix":"%s",
       "cgroupNs":"%s"
    }
 }
@@ -233,9 +233,7 @@ func TestCgroupNsByContainerName(t *testing.T) {
 		t.Skipf("joining another container cgroup namespace by container name not supported on GitHub actions")
 	}
 	logger := log.NewTestLogger(t)
-	//seed := int64(1)
-	//rng := *rand.New(rand.NewSource(seed))
-	//containername1 := fmt.Sprintf("test%s", util.GetRandomString(&rng, 5))
+
 	containernameroot1 := "test_1"
 	// The first container will run with a private namespace that will be created at startup
 	configtemplate1 := fmt.Sprintf(cgroupTemplate, containernameroot1, "private")
@@ -442,7 +440,7 @@ func TestCgroupNsByNamespacePath(t *testing.T) {
 var networkTemplate = `
 {
    "podman":{
-      "ContainerNameRoot":"%s",
+      "ContainerNamePrefix":"%s",
       "path":"/usr/bin/podman",
       "networkMode":"%s"
    }

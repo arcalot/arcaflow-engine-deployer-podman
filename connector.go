@@ -10,15 +10,17 @@ import (
 	"go.flow.arcalot.io/podmandeployer/internal/cliwrapper"
 	"go.flow.arcalot.io/podmandeployer/internal/util"
 	"math/rand"
+	"sync"
 )
 
 type Connector struct {
-	containerNameRoot string
-	config            *Config
-	logger            log.Logger
-	podmanCliWrapper  cliwrapper.CliWrapper
-	rng               *rand.Rand
-	seed              int64
+	containerNamePrefix string
+	config              *Config
+	logger              log.Logger
+	podmanCliWrapper    cliwrapper.CliWrapper
+	rng                 *rand.Rand
+	seed                int64
+	lock                *sync.Mutex
 }
 
 func (c *Connector) Deploy(ctx context.Context, image string) (deployer.Plugin, error) {
@@ -33,7 +35,7 @@ func (c *Connector) Deploy(ctx context.Context, image string) (deployer.Plugin, 
 	containerConfig := c.unwrapContainerConfig()
 	hostConfig := c.unwrapHostConfig()
 	commandArgs := []string{"run", "-i", "-a", "stdin", "-a", "stdout", "-a", "stderr"}
-	containerName := c.NextContainerName(c.containerNameRoot, 10)
+	containerName := c.NextContainerName(c.containerNamePrefix, 10)
 
 	args.NewBuilder(&commandArgs).
 		SetContainerName(containerName).
@@ -100,5 +102,7 @@ func (c *Connector) unwrapHostConfig() container.HostConfig {
 }
 
 func (c *Connector) NextContainerName(container_id string, random_str_size int) string {
+	c.lock.Lock()
+	defer c.lock.Unlock()
 	return fmt.Sprintf("%s_%s", container_id, util.GetRandomString(c.rng, random_str_size))
 }
