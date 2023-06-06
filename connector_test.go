@@ -566,9 +566,7 @@ func checkIfconfig(t *testing.T) string {
 func testNetworking(t *testing.T, podmanNetworking string, containerTest string, expectedOutput *string, ip *string, mac *string) {
 	logger := log.NewTestLogger(t)
 	checkIfconfig(t)
-	//seed := int64(1)
-	//rng := *rand.New(rand.NewSource(seed))
-	//containername := fmt.Sprintf("test%s", util.GetRandomString(&rng, 5))
+
 	containernameroot := "test"
 	// The first container will run with the host namespace
 	configtemplate := fmt.Sprintf(networkTemplate, containernameroot, podmanNetworking)
