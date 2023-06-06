@@ -33,9 +33,8 @@ func (c *Connector) Deploy(ctx context.Context, image string) (deployer.Plugin, 
 	containerConfig := c.unwrapContainerConfig()
 	hostConfig := c.unwrapHostConfig()
 	commandArgs := []string{"run", "-i", "-a", "stdin", "-a", "stdout", "-a", "stderr"}
-
 	containerName := c.NextContainerName(c.containerNameRoot, 10)
-	//containerName := c.containerNameRoot
+
 	args.NewBuilder(&commandArgs).
 		SetContainerName(containerName).
 		SetEnv(containerConfig.Env).

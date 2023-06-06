@@ -58,44 +58,6 @@ func InspectImage(logger log.Logger, image string) *BasicInspection {
 }
 
 // GetCommmandCgroupNs detects the user's cgroup namespace
-//func GetCommmandCgroupNs(logger log.Logger, command string, args []string) string {
-//	var pid int
-//	var wg sync.WaitGroup
-//	wg.Add(1)
-//	go func() {
-//		defer wg.Done()
-//		cmd1 := exec.Command(command, args...)
-//
-//		if err := cmd1.Start(); err != nil {
-//			logger.Errorf(err.Error())
-//		}
-//		pid = cmd1.Process.Pid
-//
-//		if err := cmd1.Wait(); err != nil {
-//			logger.Errorf(err.Error())
-//		}
-//	}()
-//	wg.Wait()
-//	time.Sleep(1 * time.Second)
-//	wg.Add(1)
-//	var userCgroupNs string
-//	go func() {
-//		defer wg.Done()
-//		var stdout bytes.Buffer
-//		cmd2 := exec.Command("ls", "-al", fmt.Sprintf("/proc/%d/ns/cgroup", pid)) //nolint:gosec
-//		cmd2.Stdout = &stdout
-//		if err := cmd2.Run(); err != nil {
-//			logger.Errorf(err.Error())
-//		}
-//		stdoutStr := stdout.String()
-//		regex := regexp.MustCompile(`.*cgroup:\[(\d+)\]`)
-//		userCgroupNs = regex.ReplaceAllString(stdoutStr, "$1")
-//		userCgroupNs = strings.TrimSuffix(userCgroupNs, "\n")
-//	}()
-//	wg.Wait()
-//	return userCgroupNs
-//}
-
 func GetCommmandCgroupNs(logger log.Logger, command string, args []string) string {
 	var pid int
 

@@ -268,7 +268,7 @@ func TestCgroupNsByContainerName(t *testing.T) {
 		}
 	}()
 	// sleeps to wait the first container become ready and attach to its cgroup ns
-	time.Sleep(2 * time.Second)
+	time.Sleep(3 * time.Second)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
