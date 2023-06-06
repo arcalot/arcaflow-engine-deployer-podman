@@ -453,16 +453,30 @@ func TestNetworkHost(t *testing.T) {
 }
 
 func TestNetworkBridge(t *testing.T) {
+	// forces the container to have the following
+	// network settings:
+	// ip 10.88.0.123
+	// mac 44:33:22:11:00:99
+	// then asks to the container to run an ifconfig (tests/test_script.sh, test_network())
+	// through ATP to check if the settings have been effectively accepted
 	if tests.IsRunningOnGithub() {
 		t.Skipf("bridge networking not supported on GitHub actions")
 	}
-	testNetworking(t, "bridge:ip=10.88.0.123,mac=44:33:22:11:00:99,interface_name=testif0",
+	ip := "10.88.0.123"
+	mac := "44:33:22:11:00:99"
+
+	testNetworking(
+		t,
+		"bridge:ip=10.88.0.123,mac=44:33:22:11:00:99,interface_name=testif0",
 		"network bridge\n",
-		"10.88.0.123;44:33:22:11:00:99",
+		nil,
+		&ip,
+		&mac,
 	)
 }
 func TestNetworkNone(t *testing.T) {
-	testNetworking(t, "none", "network none\n", "1;lo")
+	expectedOutput := "1;lo"
+	testNetworking(t, "none", "network none\n", &expectedOutput, nil, nil)
 }
 
 func TestClose(t *testing.T) {
@@ -516,7 +530,7 @@ func checkIfconfig(t *testing.T) string {
 	return path
 }
 
-func testNetworking(t *testing.T, podmanNetworking string, containerTest string, expectedOutput string) {
+func testNetworking(t *testing.T, podmanNetworking string, containerTest string, expectedOutput *string, ip *string, mac *string) {
 	logger := log.NewTestLogger(t)
 	checkIfconfig(t)
 	containername := fmt.Sprintf("test%s", util.GetRandomString(5))
@@ -536,13 +550,29 @@ func testNetworking(t *testing.T, podmanNetworking string, containerTest string,
 	if _, err := plugin.Write(containerInput); err != nil {
 		t.Fatalf(err.Error())
 	}
-
-	readBuffer := readOutputUntil(t, plugin, expectedOutput)
+	var readBuffer []byte
+	if expectedOutput != nil {
+		// in the networking none the token is exactly the output of ifconfig
+		readBuffer = readOutputUntil(t, plugin, *expectedOutput)
+	} else if mac != nil {
+		// if an ip is passed instead the output contains the ipv6 interface ID as well so
+		// the output is read until the mac address that is the last token in the ifconfig output.
+		readBuffer = readOutputUntil(t, plugin, *mac)
+	}
 	logger.Infof(string(readBuffer))
 	if len(readBuffer) == 0 {
 		t.Fatalf("the container did not produce any output")
 	}
-	if strings.Contains(string(readBuffer), expectedOutput) == false {
-		t.Fatalf("expected string not found: %s, %s found instead", expectedOutput, string(readBuffer))
+	if ip == nil && mac == nil && expectedOutput != nil {
+		if strings.Contains(string(readBuffer), *expectedOutput) == false {
+			t.Fatalf("expected string not found: %s, %s found instead", *expectedOutput, string(readBuffer))
+		}
+	} else {
+		if strings.Contains(string(readBuffer), *ip) == false {
+			t.Fatalf("expected string not found: %s, %s found instead", *ip, string(readBuffer))
+		}
+		if strings.Contains(string(readBuffer), *mac) == false {
+			t.Fatalf("expected string not found: %s, %s found instead", *mac, string(readBuffer))
+		}
 	}
 }
