@@ -60,7 +60,10 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 			),
 			"containerNamePrefix": schema.NewPropertySchema(
 				schema.NewStringSchema(nil, nil, regexp.MustCompile("^.*$")),
-				schema.NewDisplayValue(schema.PointerTo("Container Name Root"), schema.PointerTo("Provides root name of the container"), nil),
+				schema.NewDisplayValue(
+					schema.PointerTo("Container Name Prefix"),
+					schema.PointerTo("Constant prefix prepended to the randomized container name string."),
+					nil),
 				false,
 				nil,
 				nil,
@@ -70,7 +73,10 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 			),
 			"rngSeed": schema.NewPropertySchema(
 				schema.NewIntSchema(nil, nil, nil),
-				schema.NewDisplayValue(schema.PointerTo("RngSeed"), schema.PointerTo("Random String Generator RngSeed"), nil),
+				schema.NewDisplayValue(
+					schema.PointerTo("RngSeed"),
+					schema.PointerTo("Initial integer that is the starting point for a Random Number Generator's algorithm. Set this value for reproducible randomness."),
+					nil),
 				false,
 				nil,
 				nil,

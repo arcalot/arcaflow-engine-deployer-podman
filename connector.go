@@ -19,8 +19,11 @@ type Connector struct {
 	logger              log.Logger
 	podmanCliWrapper    cliwrapper.CliWrapper
 	rng                 *rand.Rand
-	rngSeed             int64
-	lock                *sync.Mutex
+	// Random Number Generator
+	rngSeed int64
+	// the initial integer that is the starting point for a
+	// random number generator's algorithm
+	lock *sync.Mutex
 }
 
 func (c *Connector) Deploy(ctx context.Context, image string) (deployer.Plugin, error) {
@@ -101,8 +104,8 @@ func (c *Connector) unwrapHostConfig() container.HostConfig {
 	return container.HostConfig{}
 }
 
-func (c *Connector) NextContainerName(container_id string, random_str_size int) string {
+func (c *Connector) NextContainerName(containerNamePrefix string, randomStrSize int) string {
 	c.lock.Lock()
 	defer c.lock.Unlock()
-	return fmt.Sprintf("%s_%s", container_id, util.GetRandomString(c.rng, random_str_size))
+	return fmt.Sprintf("%s_%s", containerNamePrefix, util.GetRandomString(c.rng, randomStrSize))
 }

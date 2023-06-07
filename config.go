@@ -33,11 +33,14 @@ const (
 type Podman struct {
 	Path                string `json:"path"`
 	ContainerNamePrefix string `json:"containerNamePrefix"`
-	CgroupNs            string `json:"cgroupNs"`
-	NetworkMode         string `json:"networkMode"`
-	ImageArchitecture   string `json:"imageArchitecture"`
-	ImageOS             string `json:"imageOS"`
-	RngSeed             int64  `json:"rngSeed"`
+	// constant prefix prepended to the randomized container name string
+	CgroupNs          string `json:"cgroupNs"`
+	NetworkMode       string `json:"networkMode"`
+	ImageArchitecture string `json:"imageArchitecture"`
+	ImageOS           string `json:"imageOS"`
+	RngSeed           int64  `json:"rngSeed"`
+	// the initial integer that is the starting point for a
+	// Random Number Generator's algorithm
 }
 
 // Deployment contains the information about deploying the plugin.

@@ -59,24 +59,27 @@ func InspectImage(logger log.Logger, image string) *BasicInspection {
 
 // GetCommmandCgroupNs detects the user's cgroup namespace
 func GetCommmandCgroupNs(logger log.Logger, command string, args []string) string {
+	// determine pid of a process executed by this user
 	var pid int
-
 	cmd1 := exec.Command(command, args...)
 	if err := cmd1.Start(); err != nil {
 		logger.Errorf(err.Error())
 	}
 	pid = cmd1.Process.Pid
 
+	// wait
 	time.Sleep(1 * time.Second)
 
+	// determine the cgroup using a pid
 	var userCgroupNs string
-
 	var stdout bytes.Buffer
+	// execute a shell-like command to list the cgroups in the namespace of the pid
 	cmd2 := exec.Command("ls", "-al", fmt.Sprintf("/proc/%d/ns/cgroup", pid)) //nolint:gosec
 	cmd2.Stdout = &stdout
 	if err := cmd2.Run(); err != nil {
 		logger.Errorf(err.Error())
 	}
+	// parse output from command
 	stdoutStr := stdout.String()
 	regex := regexp.MustCompile(`.*cgroup:\[(\d+)\]`)
 	userCgroupNs = regex.ReplaceAllString(stdoutStr, "$1")
