@@ -19,7 +19,7 @@ type Connector struct {
 	logger              log.Logger
 	podmanCliWrapper    cliwrapper.CliWrapper
 	rng                 *rand.Rand
-	seed                int64
+	rngSeed             int64
 	lock                *sync.Mutex
 }
 

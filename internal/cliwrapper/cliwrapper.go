@@ -14,10 +14,7 @@ import (
 
 type cliWrapper struct {
 	podmanFullPath string
-	deployCommand  *exec.Cmd
 	logger         log.Logger
-	podmanargs     string
-	containerargs  string
 }
 
 func NewCliWrapper(fullPath string, logger log.Logger) CliWrapper {
@@ -78,19 +75,13 @@ func (p *cliWrapper) Deploy(image string, podmanArgs []string, containerArgs []s
 	if err != nil {
 		return nil, nil, err
 	}
-
 	if err := deployCommand.Start(); err != nil {
 		return nil, nil, errors.New(err.Error())
 	}
-
-	//p.podmanargs = strings.Join(podmanArgs[:], ",")
-	//p.containerargs = strings.Join(containerArgs[:], ",")
 	return stdin, stdout, nil
 }
 
 func (p *cliWrapper) KillAndClean(containerName string) error {
-	//if p.deployCommand != nil {
-	//if len(p.podmanargs) > 0 && len(p.containerargs) > 0 {
 	cmdKill := exec.Command(p.podmanFullPath, "kill", containerName) //nolint:gosec
 	if err := cmdKill.Run(); err != nil {
 		p.logger.Warningf("failed to kill pod %s, probably the execution terminated earlier", containerName)
@@ -106,6 +97,5 @@ func (p *cliWrapper) KillAndClean(containerName string) error {
 	} else {
 		p.logger.Infof("successfully removed container %s", containerName)
 	}
-	//}
 	return nil
 }

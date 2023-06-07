@@ -38,28 +38,28 @@ func (f factory) Create(config *Config, logger log.Logger) (deployer.Connector, 
 	}
 	podman := cliwrapper.NewCliWrapper(podmanPath, logger)
 
-	var seed int64
+	var rngSeed int64
 	if config.Podman.RngSeed == 0 {
-		seed = time.Now().UnixNano()
+		rngSeed = time.Now().UnixNano()
 	} else {
-		seed = config.Podman.RngSeed
+		rngSeed = config.Podman.RngSeed
 	}
-	rng := rand.New(rand.NewSource(seed))
+	rng := rand.New(rand.NewSource(rngSeed))
 
-	var containerNameRoot string
+	var containerNamePrefix string
 	if config.Podman.ContainerNamePrefix == "" {
-		containerNameRoot = "arcaflow_podman"
+		containerNamePrefix = "arcaflow_podman"
 	} else {
-		containerNameRoot = config.Podman.ContainerNamePrefix
+		containerNamePrefix = config.Podman.ContainerNamePrefix
 	}
 
 	return &Connector{
 		config:              config,
 		logger:              logger,
 		podmanCliWrapper:    podman,
-		containerNamePrefix: containerNameRoot,
+		containerNamePrefix: containerNamePrefix,
 		rng:                 rng,
-		seed:                seed,
+		rngSeed:             rngSeed,
 		lock:                &sync.Mutex{},
 	}, nil
 }

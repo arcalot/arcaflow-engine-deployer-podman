@@ -231,9 +231,9 @@ func TestCgroupNsByContainerName(t *testing.T) {
 	}
 	logger := log.NewTestLogger(t)
 
-	containernameroot1 := "test_1"
+	containerNamePrefix1 := "test_1"
 	// The first container will run with a private namespace that will be created at startup
-	configtemplate1 := fmt.Sprintf(cgroupTemplate, containernameroot1, "private")
+	configtemplate1 := fmt.Sprintf(cgroupTemplate, containerNamePrefix1, "private")
 	connector1, config := getConnector(t, configtemplate1)
 	container1, err := connector1.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
 	assert.NoError(t, err)
@@ -241,9 +241,9 @@ func TestCgroupNsByContainerName(t *testing.T) {
 	//	t.Fatalf(err.Error())
 	//}
 
-	containernameroot2 := "test_2"
+	containerNamePrefix2 := "test_2"
 	// The second one will join the newly created private namespace of the first container
-	configtemplate2 := fmt.Sprintf(cgroupTemplate, containernameroot2, fmt.Sprintf("container:%s", container1.ID()))
+	configtemplate2 := fmt.Sprintf(cgroupTemplate, containerNamePrefix2, fmt.Sprintf("container:%s", container1.ID()))
 	connector2, _ := getConnector(t, configtemplate2)
 	container2, err := connector2.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
 	//if err != nil {
@@ -298,9 +298,9 @@ func TestPrivateCgroupNs(t *testing.T) {
 	assert.NotNil(t, userCgroupNs)
 	logger.Debugf("Detected cgroup namespace for user: %s", userCgroupNs)
 
-	containernameroot := "test"
+	containerNamePrefix := "test"
 	// The first container will run with a private namespace that will be created at startup
-	configtemplate := fmt.Sprintf(cgroupTemplate, containernameroot, "private")
+	configtemplate := fmt.Sprintf(cgroupTemplate, containerNamePrefix, "private")
 	connector, config := getConnector(t, configtemplate)
 	container, err := connector.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
 	assert.NoError(t, err)
@@ -338,9 +338,9 @@ func TestHostCgroupNs(t *testing.T) {
 
 	logger.Debugf("Detected cgroup namespace for user: %s", userCgroupNs)
 	//containername := fmt.Sprintf("test%s", util.GetRandomString(&rng, 5))
-	containernameroot := "test"
+	containerNamePrefix := "host_cgroupns"
 	// The first container will run with the host namespace
-	configtemplate := fmt.Sprintf(cgroupTemplate, containernameroot, "host")
+	configtemplate := fmt.Sprintf(cgroupTemplate, containerNamePrefix, "host")
 	connector, config := getConnector(t, configtemplate)
 	container, err := connector.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
 	assert.NoError(t, err)
@@ -375,9 +375,9 @@ func TestCgroupNsByNamespacePath(t *testing.T) {
 		t.Skipf("joining another container cgroup namespace by namespace path ns:/proc/<PID>/ns/cgroup not supported on GitHub actions")
 	}
 	logger := log.NewTestLogger(t)
-	containernameroot1 := "test_1"
+	containerNamePrefix1 := "test_1"
 	// The first container will run with a private namespace that will be created at startup
-	configtemplate1 := fmt.Sprintf(cgroupTemplate, containernameroot1, "private")
+	configtemplate1 := fmt.Sprintf(cgroupTemplate, containerNamePrefix1, "private")
 	connector1, config := getConnector(t, configtemplate1)
 	container1, err := connector1.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
 	assert.NoError(t, err)
@@ -397,10 +397,10 @@ func TestCgroupNsByNamespacePath(t *testing.T) {
 
 	pid := tests.GetPodmanPsNsWithFormat(logger, config.Podman.Path, container1.ID(), "{{.Pid}}")
 
-	containername2 := "test_2"
+	containerNamePrefix2 := "test_2"
 	// The second one will join the newly created private namespace of the first container
 	namespacePath := fmt.Sprintf("ns:/proc/%s/ns/cgroup", pid)
-	configtemplate2 := fmt.Sprintf(cgroupTemplate, containername2, namespacePath)
+	configtemplate2 := fmt.Sprintf(cgroupTemplate, containerNamePrefix2, namespacePath)
 	connector2, _ := getConnector(t, configtemplate2)
 
 	container2, err := connector2.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
@@ -446,9 +446,9 @@ var networkTemplate = `
 
 func TestNetworkHost(t *testing.T) {
 	logger := log.NewTestLogger(t)
-	containernameroot := "test"
+	containerNamePrefix := "networkhost"
 	// The first container will run with the host namespace
-	configtemplate := fmt.Sprintf(networkTemplate, containernameroot, "host")
+	configtemplate := fmt.Sprintf(networkTemplate, containerNamePrefix, "host")
 	connector, _ := getConnector(t, configtemplate)
 	plugin, err := connector.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
 	assert.NoError(t, err)
@@ -479,7 +479,9 @@ func TestNetworkHost(t *testing.T) {
 }
 
 func TestNetworkBridge(t *testing.T) {
-	// forces the container to have the following
+	// If this test breaks again, delete it.
+
+	// This test forces the container to have the following
 	// network settings:
 	// ip 10.88.0.123
 	// mac 44:33:22:11:00:99
