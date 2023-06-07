@@ -55,12 +55,14 @@ func TestSimpleInOut(t *testing.T) {
 	assert.NoErrorR[int](t)(plugin.Write(containerInput))
 
 	readBuffer := readOutputUntil(t, plugin, pongStr)
+	// assert output is not empty
 	assert.Equals(t, len(readBuffer) > 0, true)
 
 	logger.Infof(string(readBuffer[:7]))
 	assert.NoErrorR[int](t)(plugin.Write(containerInput))
 
 	readBuffer = readOutputUntil(t, plugin, endStr)
+	// assert output is not empty
 	assert.Equals(t, len(readBuffer) > 0, true)
 
 	t.Cleanup(func() {
@@ -385,12 +387,6 @@ func TestCgroupNsByNamespacePath(t *testing.T) {
 
 	ns1 := tests.GetPodmanPsNsWithFormat(logger, config.Podman.Path, container1.ID(), "{{.CGROUPNS}}")
 	ns2 := tests.GetPodmanPsNsWithFormat(logger, config.Podman.Path, container1.ID(), "{{.CGROUPNS}}")
-	//if ns1 != ns2 {
-	//	t.Errorf("namespace1: %s and namespace2: %s do not match, failing", ns1, ns2)
-	//} else {
-	//	logger.Debugf("container 1 namespace: %s, container 2 namespace: %s, they're the same!", ns1, ns2)
-	//	logger.Debugf("Container 2 joined the namespace via namespace path: %s", namespacePath)
-	//}
 	assert.Equals(t, ns1 == ns2, true)
 	wg.Wait()
 
@@ -427,17 +423,16 @@ func TestNetworkHost(t *testing.T) {
 
 	var ifconfigOut bytes.Buffer
 	// runs ifconfig in the host machine in order to check if the container has exactly the same network configuration
-	cmd := exec.Command("/bin/bash", "-c", "ifconfig | grep -P \"^.+:\\s+.+$\" | awk '{ gsub(\":\",\"\");print $1 }'")
+	cmd := exec.Command(
+		"/bin/bash", "-c", "ifconfig | grep -P \"^.+:\\s+.+$\" | awk '{ gsub(\":\",\"\");print $1 }'")
 	cmd.Stdout = &ifconfigOut
 	assert.NoError(t, cmd.Run())
 
 	ifconfigOutStr := ifconfigOut.String()
 	logger.Infof(ifconfigOutStr)
 	readBuffer := readOutputUntil(t, plugin, ifconfigOutStr)
-	assert.Equals(t, len(readBuffer) > 0, true)
-
 	containerOutString := string(readBuffer)
-	assert.Equals(t, strings.Contains(containerOutString, ifconfigOutStr), true)
+	assert.Contains(t, containerOutString, ifconfigOutStr)
 
 	t.Cleanup(func() {
 		assert.NoError(t, plugin.Close())
@@ -541,7 +536,8 @@ func testNetworking(t *testing.T, podmanNetworking string, containerTest string,
 	assert.NoError(t, err)
 
 	var containerInput = []byte(containerTest)
-	// the test script will output a string containing the desired ip address and mac address filtered by the desired interface name
+	// the test script will output a string containing the desired ip address and mac address
+	// filtered by the desired interface name
 	_, err = plugin.Write(containerInput)
 	assert.NoError(t, err)
 
@@ -555,13 +551,15 @@ func testNetworking(t *testing.T, podmanNetworking string, containerTest string,
 		readBuffer = readOutputUntil(t, plugin, *mac)
 	}
 	logger.Infof(string(readBuffer))
+
+	// assert the container input is not empty
 	assert.Equals(t, len(readBuffer) > 0, true)
 
 	if ip == nil && mac == nil && expectedOutput != nil {
-		assert.Equals(t, strings.Contains(string(readBuffer), *expectedOutput), true)
+		assert.Contains(t, string(readBuffer), *expectedOutput)
 	} else {
-		assert.Equals(t, strings.Contains(string(readBuffer), *ip), true)
-		assert.Equals(t, strings.Contains(string(readBuffer), *mac), true)
+		assert.Contains(t, string(readBuffer), *ip)
+		assert.Contains(t, string(readBuffer), *mac)
 	}
 
 	t.Cleanup(func() {
