@@ -1,7 +1,6 @@
 package util
 
 import (
-	//"crypto/rand"
 	"math/rand"
 )
 

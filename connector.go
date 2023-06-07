@@ -19,7 +19,8 @@ type Connector struct {
 	logger              log.Logger
 	podmanCliWrapper    cliwrapper.CliWrapper
 	rng                 *rand.Rand
-	// Random Number Generator
+	// Random Number Generator to facilitate the generation
+	// of random strings for the container name suffix.
 	rngSeed int64
 	// The initial integer that is the starting point for a
 	// random number generator's algorithm.
