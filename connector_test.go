@@ -6,15 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math/rand"
 	"os"
 	"os/exec"
 	"strings"
 	"sync"
 	"testing"
 	"time"
-
-	"go.flow.arcalot.io/podmandeployer/internal/util"
 
 	"go.arcalot.io/assert"
 	log "go.arcalot.io/log/v2"
@@ -509,10 +506,8 @@ func TestNetworkNone(t *testing.T) {
 }
 
 func TestClose(t *testing.T) {
-	seed := int64(1)
-	rng := *rand.New(rand.NewSource(seed))
-	containerName := fmt.Sprintf("test_%s", util.GetRandomString(&rng, 5))
-	configTemplate := fmt.Sprintf(nameTemplate, containerName)
+	containerNamePrefix := "close"
+	configTemplate := fmt.Sprintf(nameTemplate, containerNamePrefix)
 	connector, _ := getConnector(t, configTemplate)
 
 	container, err := connector.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
@@ -565,9 +560,9 @@ func testNetworking(t *testing.T, podmanNetworking string, containerTest string,
 	logger := log.NewTestLogger(t)
 	checkIfconfig(t)
 
-	containernameroot := "test"
+	containerNamePrefix := "networking"
 	// The first container will run with the host namespace
-	configtemplate := fmt.Sprintf(networkTemplate, containernameroot, podmanNetworking)
+	configtemplate := fmt.Sprintf(networkTemplate, containerNamePrefix, podmanNetworking)
 	connector, _ := getConnector(t, configtemplate)
 	plugin, err := connector.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
 	if err != nil {
