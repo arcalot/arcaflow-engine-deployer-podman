@@ -21,8 +21,8 @@ type Connector struct {
 	rng                 *rand.Rand
 	// Random Number Generator
 	rngSeed int64
-	// the initial integer that is the starting point for a
-	// random number generator's algorithm
+	// The initial integer that is the starting point for a
+	// random number generator's algorithm.
 	lock *sync.Mutex
 }
 
