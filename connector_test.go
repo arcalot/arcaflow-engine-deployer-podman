@@ -163,7 +163,7 @@ var nameTemplate = `
 {
   "podman":{
      "path":"/usr/bin/podman",
-     "ContainerNamePrefix":"%s"
+     "containerNamePrefix":"%s"
   }
 }
 `
@@ -219,7 +219,7 @@ var cgroupTemplate = `
 {
    "podman":{
       "path":"/usr/bin/podman",
-      "ContainerNamePrefix":"%s",
+      "containerNamePrefix":"%s",
       "cgroupNs":"%s"
    }
 }
@@ -437,7 +437,7 @@ func TestCgroupNsByNamespacePath(t *testing.T) {
 var networkTemplate = `
 {
    "podman":{
-      "ContainerNamePrefix":"%s",
+      "containerNamePrefix":"%s",
       "path":"/usr/bin/podman",
       "networkMode":"%s"
    }
