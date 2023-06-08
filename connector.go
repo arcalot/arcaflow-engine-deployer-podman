@@ -2,19 +2,29 @@ package podman
 
 import (
 	"context"
-
+	"fmt"
 	"github.com/docker/docker/api/types/container"
 	log "go.arcalot.io/log/v2"
 	"go.flow.arcalot.io/deployer"
 	args "go.flow.arcalot.io/podmandeployer/internal/argsbuilder"
 	"go.flow.arcalot.io/podmandeployer/internal/cliwrapper"
+	"go.flow.arcalot.io/podmandeployer/internal/util"
+	"math/rand"
+	"sync"
 )
 
 type Connector struct {
-	containerName    string
-	config           *Config
-	logger           log.Logger
-	podmanCliWrapper cliwrapper.CliWrapper
+	containerNamePrefix string
+	config              *Config
+	logger              log.Logger
+	podmanCliWrapper    cliwrapper.CliWrapper
+	rng                 *rand.Rand
+	// Random Number Generator to facilitate the generation
+	// of random strings for the container name suffix.
+	rngSeed int64
+	// The initial integer that is the starting point for a
+	// random number generator's algorithm.
+	lock *sync.Mutex
 }
 
 func (c *Connector) Deploy(ctx context.Context, image string) (deployer.Plugin, error) {
@@ -29,9 +39,10 @@ func (c *Connector) Deploy(ctx context.Context, image string) (deployer.Plugin, 
 	containerConfig := c.unwrapContainerConfig()
 	hostConfig := c.unwrapHostConfig()
 	commandArgs := []string{"run", "-i", "-a", "stdin", "-a", "stdout", "-a", "stderr"}
+	containerName := c.NextContainerName(c.containerNamePrefix, 10)
 
 	args.NewBuilder(&commandArgs).
-		SetContainerName(c.containerName).
+		SetContainerName(containerName).
 		SetEnv(containerConfig.Env).
 		SetVolumes(hostConfig.Binds).
 		SetCgroupNs(c.config.Podman.CgroupNs).
@@ -46,7 +57,7 @@ func (c *Connector) Deploy(ctx context.Context, image string) (deployer.Plugin, 
 	cliPlugin := CliPlugin{
 		wrapper:        c.podmanCliWrapper,
 		containerImage: image,
-		containerName:  c.containerName,
+		containerName:  containerName,
 		config:         c.config,
 		stdin:          stdin,
 		stdout:         stdout,
@@ -92,4 +103,10 @@ func (c *Connector) unwrapHostConfig() container.HostConfig {
 		return *c.config.Deployment.HostConfig
 	}
 	return container.HostConfig{}
+}
+
+func (c *Connector) NextContainerName(containerNamePrefix string, randomStrSize int) string {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	return fmt.Sprintf("%s_%s", containerNamePrefix, util.GetRandomString(c.rng, randomStrSize))
 }

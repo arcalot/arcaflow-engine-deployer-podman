@@ -2,15 +2,17 @@ package podman
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
+	"time"
 
 	log "go.arcalot.io/log/v2"
 	"go.flow.arcalot.io/deployer"
 	"go.flow.arcalot.io/pluginsdk/schema"
 	"go.flow.arcalot.io/podmandeployer/internal/cliwrapper"
-	"go.flow.arcalot.io/podmandeployer/internal/util"
 )
 
 // NewFactory creates a new factory for the Docker deployer.
@@ -35,17 +37,30 @@ func (f factory) Create(config *Config, logger log.Logger) (deployer.Connector, 
 		return &Connector{}, fmt.Errorf("podman binary check failed with error: %w", err)
 	}
 	podman := cliwrapper.NewCliWrapper(podmanPath, logger)
-	var containerName string
-	if config.Podman.ContainerName == "" {
-		containerName = fmt.Sprintf("arcaflow_podman_%s", util.GetRandomString(5))
+
+	var rngSeed int64
+	if config.Podman.RngSeed == 0 {
+		rngSeed = time.Now().UnixNano()
 	} else {
-		containerName = config.Podman.ContainerName
+		rngSeed = config.Podman.RngSeed
 	}
+	rng := rand.New(rand.NewSource(rngSeed))
+
+	var containerNamePrefix string
+	if config.Podman.ContainerNamePrefix == "" {
+		containerNamePrefix = "arcaflow_podman"
+	} else {
+		containerNamePrefix = config.Podman.ContainerNamePrefix
+	}
+
 	return &Connector{
-		config:           config,
-		logger:           logger,
-		podmanCliWrapper: podman,
-		containerName:    containerName,
+		config:              config,
+		logger:              logger,
+		podmanCliWrapper:    podman,
+		containerNamePrefix: containerNamePrefix,
+		rng:                 rng,
+		rngSeed:             rngSeed,
+		lock:                &sync.Mutex{},
 	}, nil
 }
 

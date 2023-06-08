@@ -14,7 +14,6 @@ import (
 
 type cliWrapper struct {
 	podmanFullPath string
-	deployCommand  *exec.Cmd
 	logger         log.Logger
 }
 
@@ -67,39 +66,36 @@ func (p *cliWrapper) Deploy(image string, podmanArgs []string, containerArgs []s
 	image = p.decorateImageName(image)
 	podmanArgs = append(podmanArgs, image)
 	podmanArgs = append(podmanArgs, containerArgs...)
-	p.deployCommand = exec.Command(p.podmanFullPath, podmanArgs...) //nolint:gosec
-	stdin, err := p.deployCommand.StdinPipe()
+	deployCommand := exec.Command(p.podmanFullPath, podmanArgs...) //nolint:gosec
+	stdin, err := deployCommand.StdinPipe()
 	if err != nil {
 		return nil, nil, err
 	}
-	stdout, err := p.deployCommand.StdoutPipe()
+	stdout, err := deployCommand.StdoutPipe()
 	if err != nil {
 		return nil, nil, err
 	}
-
-	if err := p.deployCommand.Start(); err != nil {
+	if err := deployCommand.Start(); err != nil {
 		return nil, nil, errors.New(err.Error())
 	}
 	return stdin, stdout, nil
 }
 
 func (p *cliWrapper) KillAndClean(containerName string) error {
-	if p.deployCommand != nil {
-		cmdKill := exec.Command(p.podmanFullPath, "kill", containerName) //nolint:gosec
-		if err := cmdKill.Run(); err != nil {
-			p.logger.Warningf("failed to kill pod %s, probably the execution terminated earlier", containerName)
-		} else {
-			p.logger.Warningf("successfully killed container %s", containerName)
-		}
+	cmdKill := exec.Command(p.podmanFullPath, "kill", containerName) //nolint:gosec
+	if err := cmdKill.Run(); err != nil {
+		p.logger.Warningf("failed to kill pod %s, probably the execution terminated earlier", containerName)
+	} else {
+		p.logger.Warningf("successfully killed container %s", containerName)
+	}
 
-		var cmdRmContainerStderr bytes.Buffer
-		cmdRmContainer := exec.Command(p.podmanFullPath, "rm", "--force", containerName) //nolint:gosec
-		cmdRmContainer.Stderr = &cmdRmContainerStderr
-		if err := cmdRmContainer.Run(); err != nil {
-			p.logger.Errorf("failed to remove container %s: %s", containerName, cmdRmContainerStderr.String())
-		} else {
-			p.logger.Infof("successfully removed container %s", containerName)
-		}
+	var cmdRmContainerStderr bytes.Buffer
+	cmdRmContainer := exec.Command(p.podmanFullPath, "rm", "--force", containerName) //nolint:gosec
+	cmdRmContainer.Stderr = &cmdRmContainerStderr
+	if err := cmdRmContainer.Run(); err != nil {
+		p.logger.Errorf("failed to remove container %s: %s", containerName, cmdRmContainerStderr.String())
+	} else {
+		p.logger.Infof("successfully removed container %s", containerName)
 	}
 	return nil
 }
