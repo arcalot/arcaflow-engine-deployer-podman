@@ -3,14 +3,15 @@ package podman
 import (
 	"context"
 	"fmt"
+	"math/rand"
+	"sync"
+
 	"github.com/docker/docker/api/types/container"
 	log "go.arcalot.io/log/v2"
 	"go.flow.arcalot.io/deployer"
 	args "go.flow.arcalot.io/podmandeployer/internal/argsbuilder"
 	"go.flow.arcalot.io/podmandeployer/internal/cliwrapper"
 	"go.flow.arcalot.io/podmandeployer/internal/util"
-	"math/rand"
-	"sync"
 )
 
 type Connector struct {
