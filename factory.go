@@ -27,6 +27,10 @@ func (f factory) ID() string {
 	return "podman"
 }
 
+func (f factory) DeploymentType() deployer.DeploymentType {
+	return "image"
+}
+
 func (f factory) ConfigurationSchema() *schema.TypedScopeSchema[*Config] {
 	return Schema
 }
