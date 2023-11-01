@@ -23,8 +23,12 @@ func NewFactory() deployer.ConnectorFactory[*Config] {
 type factory struct {
 }
 
-func (f factory) ID() string {
+func (f factory) Name() string {
 	return "podman"
+}
+
+func (f factory) DeploymentType() deployer.DeploymentType {
+	return "image"
 }
 
 func (f factory) ConfigurationSchema() *schema.TypedScopeSchema[*Config] {
