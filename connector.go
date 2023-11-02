@@ -74,6 +74,7 @@ func (c *Connector) pullImage(_ context.Context, image string) error {
 	}
 	if c.config.Deployment.ImagePullPolicy == ImagePullPolicyIfNotPresent {
 		imageExists, err := c.podmanCliWrapper.ImageExists(image)
+		podmanPlatform := c.config.Podman.ImageOS + "/" + c.config.Podman.ImageArchitecture
 		if err != nil {
 			return err
 		}
@@ -85,7 +86,7 @@ func (c *Connector) pullImage(_ context.Context, image string) error {
 		// TODO:fix default values in configuration
 
 		c.logger.Debugf("Pulling image: %s", image)
-		if err := c.podmanCliWrapper.PullImage(image, c.config.Podman.ImageOS + "/" + c.config.Podman.ImageArchitecture); err != nil {
+		if err := c.podmanCliWrapper.PullImage(image, &podmanPlatform); err != nil {
 			return err
 		}
 	}
