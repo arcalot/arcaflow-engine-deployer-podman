@@ -85,7 +85,7 @@ func (c *Connector) pullImage(_ context.Context, image string) error {
 		// TODO:fix default values in configuration
 
 		c.logger.Debugf("Pulling image: %s", image)
-		if err := c.podmanCliWrapper.PullImage(image, &c.config.Podman.ImageArchitecture); err != nil {
+		if err := c.podmanCliWrapper.PullImage(image, &c.config.Podman.ImageOS + "/" + &c.config.Podman.ImageArchitecture); err != nil {
 			return err
 		}
 	}
