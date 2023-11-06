@@ -19,5 +19,5 @@ require (
 
 require (
 	go.arcalot.io/log/v2 v2.0.0
-	go.flow.arcalot.io/pluginsdk v0.5.0
+	go.flow.arcalot.io/pluginsdk v0.5.1
 )
