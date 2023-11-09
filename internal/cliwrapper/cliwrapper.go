@@ -36,9 +36,14 @@ func (p *cliWrapper) ImageExists(image string) (*bool, error) {
 	image = p.decorateImageName(image)
 	cmd := exec.Command(p.podmanFullPath, "image", "ls", "--format", "{{.Repository}}:{{.Tag}}") //nolint:gosec
 	var out bytes.Buffer
+	var errOut bytes.Buffer
 	cmd.Stdout = &out
+	cmd.Stderr = &errOut
+	p.logger.Debugf("Checking whether image exists with command %v", cmd.Args)
 	if err := cmd.Run(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf(
+			"error while determining if image exists. Stdout: '%s', Stderr: '%s', Cmd error: '%s'",
+			out.String(), errOut.String(), err)
 	}
 	outStr := out.String()
 	outSlice := strings.Split(outStr, "\n")
@@ -54,10 +59,15 @@ func (p *cliWrapper) PullImage(image string, platform *string) error {
 	image = p.decorateImageName(image)
 	commandArgs = append(commandArgs, image)
 	cmd := exec.Command(p.podmanFullPath, commandArgs...) //nolint:gosec
+	p.logger.Debugf("Pulling image with command %v", cmd.Args)
 	var out bytes.Buffer
-	cmd.Stderr = &out
+	var errOut bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errOut
 	if err := cmd.Run(); err != nil {
-		return errors.New(out.String())
+		return fmt.Errorf(
+			"error while pulling image. Stdout: '%s', Stderr: '%s', Cmd error: '%s'",
+			out.String(), errOut.String(), err)
 	}
 	return nil
 }
@@ -67,6 +77,7 @@ func (p *cliWrapper) Deploy(image string, podmanArgs []string, containerArgs []s
 	podmanArgs = append(podmanArgs, image)
 	podmanArgs = append(podmanArgs, containerArgs...)
 	deployCommand := exec.Command(p.podmanFullPath, podmanArgs...) //nolint:gosec
+	p.logger.Debugf("Deploying with command %v", deployCommand.Args)
 	stdin, err := deployCommand.StdinPipe()
 	if err != nil {
 		return nil, nil, err
@@ -83,6 +94,7 @@ func (p *cliWrapper) Deploy(image string, podmanArgs []string, containerArgs []s
 
 func (p *cliWrapper) KillAndClean(containerName string) error {
 	cmdKill := exec.Command(p.podmanFullPath, "kill", containerName) //nolint:gosec
+	p.logger.Debugf("Killing with command %v", cmdKill.Args)
 	if err := cmdKill.Run(); err != nil {
 		p.logger.Warningf("failed to kill pod %s, probably the execution terminated earlier", containerName)
 	} else {
@@ -91,6 +103,7 @@ func (p *cliWrapper) KillAndClean(containerName string) error {
 
 	var cmdRmContainerStderr bytes.Buffer
 	cmdRmContainer := exec.Command(p.podmanFullPath, "rm", "--force", containerName) //nolint:gosec
+	p.logger.Debugf("Removing container with command %v", cmdRmContainer.Args)
 	cmdRmContainer.Stderr = &cmdRmContainerStderr
 	if err := cmdRmContainer.Run(); err != nil {
 		p.logger.Errorf("failed to remove container %s: %s", containerName, cmdRmContainerStderr.String())

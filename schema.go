@@ -111,7 +111,7 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 				nil,
 				nil,
 				nil,
-				schema.PointerTo(util.JSONEncode("linux")),
+				nil,
 				nil,
 			),
 			"imageArchitecture": schema.NewPropertySchema(
@@ -121,7 +121,7 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 				nil,
 				nil,
 				nil,
-				schema.PointerTo(util.JSONEncode("amd64")),
+				nil,
 				nil,
 			),
 		},
