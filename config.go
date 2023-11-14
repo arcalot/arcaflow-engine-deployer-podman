@@ -34,10 +34,6 @@ type Podman struct {
 	Path string `json:"path"`
 	// Constant prefix prepended to the randomized container name string.
 	ContainerNamePrefix string `json:"containerNamePrefix"`
-	CgroupNs            string `json:"cgroupNs"`
-	NetworkMode         string `json:"networkMode"`
-	ImageArchitecture   string `json:"imageArchitecture"`
-	ImageOS             string `json:"imageOS"`
 	// The initial integer that is the starting point for a
 	// Random Number Generator's algorithm.
 	RngSeed int64 `json:"rngSeed"`
@@ -48,6 +44,7 @@ type Deployment struct {
 	ContainerConfig *container.Config     `json:"container"`
 	HostConfig      *container.HostConfig `json:"host"`
 	ImagePullPolicy ImagePullPolicy       `json:"imagePullPolicy"`
+	ImagePlatform   *string               `json:"imagePlatform"`
 }
 
 // Timeouts drive the timeouts for various interactions in relation to Docker.
