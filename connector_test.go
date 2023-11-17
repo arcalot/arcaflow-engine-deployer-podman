@@ -101,7 +101,7 @@ func TestEnv(t *testing.T) {
 	assert.NoErrorR[int](t)(container.Write(containerInput))
 
 	readBuffer := readOutputUntil(t, container, envVars)
-	assert.Equals(t, len(readBuffer) > 0, true)
+	assert.GreaterThan(t, len(readBuffer), 0)
 
 	t.Cleanup(func() {
 		assert.NoError(t, container.Close())
@@ -146,6 +146,8 @@ func TestSimpleVolume(t *testing.T) {
 	var containerInput = []byte("volume\n")
 	_, err = container.Write(containerInput)
 	assert.NoError(t, err)
+	// Note: If it ends up with length zero buffer, restarting the VM may help:
+	// https://stackoverflow.com/questions/71977532/podman-mount-host-volume-return-error-statfs-no-such-file-or-directory-in-ma
 	readBuffer := readOutputUntil(t, container, string(fileContent))
 	assert.GreaterThan(t, len(readBuffer), 0)
 
@@ -519,7 +521,6 @@ func readOutputUntil(t *testing.T, plugin io.Reader, lookForOutput string) []byt
 			if err != io.EOF {
 				t.Fatalf("error while reading stdout: %s", err.Error())
 			} else {
-				t.Errorf("Hit EOF.")
 				return readBuffer[:n]
 			}
 		}
