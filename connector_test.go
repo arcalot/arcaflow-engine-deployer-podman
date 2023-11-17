@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -29,13 +30,17 @@ func getConnector(t *testing.T, configJSON string) (deployer.Connector, *Config)
 	assert.NoError(t, err)
 	connector, err := factory.Create(unserializedConfig, log.NewTestLogger(t))
 	assert.NoError(t, err)
+	unserializedConfig.Podman.Path, err = binaryCheck(unserializedConfig.Podman.Path)
+	if err != nil {
+		t.Fatalf("Error checking Podman path (%s)", err)
+	}
 	return connector, unserializedConfig
 }
 
 var inOutConfig = `
 {
    "podman":{
-      "path":"/usr/bin/podman"
+      "path":"podman"
    }
 }
 `
@@ -74,7 +79,6 @@ var envConfig = `
 {
    "deployment":{
       "container":{
-         "NetworkDisabled":true,
          "Env":[
             "DEPLOYER_PODMAN_TEST_1=TEST1",
             "DEPLOYER_PODMAN_TEST_2=TEST2"
@@ -82,7 +86,7 @@ var envConfig = `
       }
    },
    "podman":{
-      "path":"/usr/bin/podman"
+      "path":"podman"
    }
 }
 `
@@ -114,7 +118,7 @@ var volumeConfig = `
       }
    },
    "podman":{
-      "path":"/usr/bin/podman"
+      "path":"podman"
    }
 }
 `
@@ -131,7 +135,7 @@ func TestSimpleVolume(t *testing.T) {
 	cmd := exec.Command("chcon", "-Rt", "svirt_sandbox_file_t", fmt.Sprintf("%s/tests/volume", cwd)) //nolint:gosec
 	err = cmd.Run()
 	if err != nil {
-		logger.Warningf("failed to set SELinux permissions on folder, chcon error: %s, this may cause test failure, let's see...", err.Error())
+		logger.Warningf("failed to set SELinux permissions on folder, chcon error: %s, this may cause test failure if SELinux is enabled.", err.Error())
 	}
 
 	container, err := connector.Deploy(
@@ -142,9 +146,8 @@ func TestSimpleVolume(t *testing.T) {
 	var containerInput = []byte("volume\n")
 	_, err = container.Write(containerInput)
 	assert.NoError(t, err)
-
 	readBuffer := readOutputUntil(t, container, string(fileContent))
-	assert.Equals(t, len(readBuffer) > 0, true)
+	assert.GreaterThan(t, len(readBuffer), 0)
 
 	t.Cleanup(func() {
 		assert.NoError(t, container.Close())
@@ -154,7 +157,7 @@ func TestSimpleVolume(t *testing.T) {
 var nameTemplate = `
 {
   "podman":{
-     "path":"/usr/bin/podman",
+     "path":"podman",
      "containerNamePrefix":"%s"
   }
 }
@@ -207,9 +210,13 @@ func TestContainerName(t *testing.T) {
 var cgroupTemplate = `
 {
    "podman":{
-      "path":"/usr/bin/podman",
-      "containerNamePrefix":"%s",
-      "cgroupNs":"%s"
+      "path":"podman",
+      "containerNamePrefix":"%s"
+   },
+   "deployment":{
+	   "host":{
+		  "CgroupnsMode":"%s"
+	   }
    }
 }
 `
@@ -271,7 +278,8 @@ func TestPrivateCgroupNs(t *testing.T) {
 	logger := log.NewTestLogger(t)
 
 	var wg sync.WaitGroup
-	userCgroupNs := tests.GetCommmandCgroupNs(logger, "/usr/bin/sleep", []string{"3"})
+	// Assume sleep is in the path. Because it's not in the same location for every user.
+	userCgroupNs := tests.GetCommmandCgroupNs(logger, "sleep", []string{"3"})
 	assert.NotNil(t, userCgroupNs)
 	logger.Debugf("Detected cgroup namespace for user: %s", userCgroupNs)
 
@@ -304,10 +312,15 @@ func TestPrivateCgroupNs(t *testing.T) {
 }
 
 func TestHostCgroupNs(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skipf("Not running on Linux. Skipping cgroup test.")
+		return
+	}
 	logger := log.NewTestLogger(t)
 	var wg sync.WaitGroup
 
-	userCgroupNs := tests.GetCommmandCgroupNs(logger, "/usr/bin/sleep", []string{"3"})
+	// Assume sleep is in the path. Because it's not in the same location for every user.
+	userCgroupNs := tests.GetCommmandCgroupNs(logger, "sleep", []string{"3"})
 	assert.NotNil(t, userCgroupNs)
 
 	logger.Debugf("Detected cgroup namespace for user: %s", userCgroupNs)
@@ -334,7 +347,7 @@ func TestHostCgroupNs(t *testing.T) {
 	assert.NotNil(t, podmanCgroupNs)
 	wg.Wait()
 
-	assert.Equals(t, userCgroupNs == podmanCgroupNs, true)
+	assert.Equals(t, userCgroupNs, podmanCgroupNs)
 
 	t.Cleanup(func() {
 		assert.NoError(t, container.Close())
@@ -400,8 +413,12 @@ var networkTemplate = `
 {
    "podman":{
       "containerNamePrefix":"%s",
-      "path":"/usr/bin/podman",
-      "networkMode":"%s"
+      "path":"podman"
+   },
+   "deployment":{
+	   "host":{
+		  "NetworkMode":"%s"
+	   }
    }
 }
 `
@@ -502,6 +519,7 @@ func readOutputUntil(t *testing.T, plugin io.Reader, lookForOutput string) []byt
 			if err != io.EOF {
 				t.Fatalf("error while reading stdout: %s", err.Error())
 			} else {
+				t.Errorf("Hit EOF.")
 				return readBuffer[:n]
 			}
 		}

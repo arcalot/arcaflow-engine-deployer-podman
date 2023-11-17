@@ -216,7 +216,7 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 				nil,
 			),
 			"NetworkMode": schema.NewPropertySchema(
-				schema.NewStringSchema(nil, nil, regexp.MustCompile("^(none|bridge|host|container:[a-zA-Z0-9][a-zA-Z0-9_.-]+|[a-zA-Z0-9][a-zA-Z0-9_.-]+)$")),
+				schema.NewStringSchema(nil, nil, regexp.MustCompile("^(none|private|bridge(:.+)?|host|container:[a-zA-Z0-9][a-zA-Z0-9_.-]+|[a-zA-Z0-9][a-zA-Z0-9_.-]+|pasta:.+|slirp4netns:.+|ns:.+)$")),
 				schema.NewDisplayValue(schema.PointerTo("Network mode"), schema.PointerTo("Specifies either the network mode, the container network to attach to, or a name of a Docker network to use."), nil),
 				false,
 				nil,
@@ -271,11 +271,7 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 				nil,
 			).Disable(notImplemented),
 			"CgroupnsMode": schema.NewPropertySchema(
-				schema.NewStringEnumSchema(map[string]*schema.DisplayValue{
-					"private": {NameValue: schema.PointerTo("Private")},
-					"host":    {NameValue: schema.PointerTo("Host")},
-					"":        {NameValue: schema.PointerTo("Empty")},
-				}),
+				schema.NewStringSchema(nil, nil, regexp.MustCompile("host|private|ns:.+|container:.+")),
 				schema.NewDisplayValue(schema.PointerTo("CGroup namespace mode"), schema.PointerTo("CGroup namespace mode to use for the container."), nil),
 				false,
 				nil,
