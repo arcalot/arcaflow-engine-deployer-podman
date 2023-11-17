@@ -53,7 +53,7 @@ func TestSimpleInOut(t *testing.T) {
 	connector, _ := getConnector(t, inOutConfig)
 	plugin, err := connector.Deploy(
 		context.Background(),
-		"quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
+		"quay.io/arcalot/podman-deployer-test-helper:0.1.0")
 	assert.NoError(t, err)
 
 	var containerInput = []byte("ping abc\n")
@@ -94,7 +94,7 @@ var envConfig = `
 func TestEnv(t *testing.T) {
 	envVars := "DEPLOYER_PODMAN_TEST_1=TEST1\nDEPLOYER_PODMAN_TEST_2=TEST2"
 	connector, _ := getConnector(t, envConfig)
-	container, err := connector.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
+	container, err := connector.Deploy(context.Background(), "quay.io/arcalot/podman-deployer-test-helper:0.1.0")
 	assert.NoError(t, err)
 
 	var containerInput = []byte("env\n")
@@ -140,7 +140,7 @@ func TestSimpleVolume(t *testing.T) {
 
 	container, err := connector.Deploy(
 		context.Background(),
-		"quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
+		"quay.io/arcalot/podman-deployer-test-helper:0.1.0")
 	assert.NoError(t, err)
 
 	var containerInput = []byte("volume\n")
@@ -176,12 +176,12 @@ func TestContainerName(t *testing.T) {
 
 	container1, err := connector1.Deploy(
 		ctx,
-		"quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
+		"quay.io/arcalot/podman-deployer-test-helper:0.1.0")
 	assert.NoError(t, err)
 
 	container2, err := connector2.Deploy(
 		ctx,
-		"quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
+		"quay.io/arcalot/podman-deployer-test-helper:0.1.0")
 	assert.NoError(t, err)
 
 	var wg sync.WaitGroup
@@ -235,7 +235,7 @@ func TestCgroupNsByContainerName(t *testing.T) {
 	connector1, config := getConnector(t, configtemplate1)
 	container1, err := connector1.Deploy(
 		context.Background(),
-		"quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
+		"quay.io/arcalot/podman-deployer-test-helper:0.1.0")
 	assert.NoError(t, err)
 
 	containerNamePrefix2 := "test_2"
@@ -244,7 +244,7 @@ func TestCgroupNsByContainerName(t *testing.T) {
 	connector2, _ := getConnector(t, configtemplate2)
 	container2, err := connector2.Deploy(
 		context.Background(),
-		"quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
+		"quay.io/arcalot/podman-deployer-test-helper:0.1.0")
 	assert.NoError(t, err)
 
 	var wg sync.WaitGroup
@@ -291,7 +291,7 @@ func TestPrivateCgroupNs(t *testing.T) {
 	connector, config := getConnector(t, configtemplate)
 	container, err := connector.Deploy(
 		context.Background(),
-		"quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
+		"quay.io/arcalot/podman-deployer-test-helper:0.1.0")
 	assert.NoError(t, err)
 
 	wg.Add(1)
@@ -332,7 +332,7 @@ func TestHostCgroupNs(t *testing.T) {
 	connector, config := getConnector(t, configtemplate)
 	container, err := connector.Deploy(
 		context.Background(),
-		"quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
+		"quay.io/arcalot/podman-deployer-test-helper:0.1.0")
 	assert.NoError(t, err)
 
 	wg.Add(1)
@@ -365,7 +365,7 @@ func TestCgroupNsByNamespacePath(t *testing.T) {
 	// The first container will run with a private namespace that will be created at startup
 	configtemplate1 := fmt.Sprintf(cgroupTemplate, containerNamePrefix1, "private")
 	connector1, config := getConnector(t, configtemplate1)
-	container1, err := connector1.Deploy(context.Background(), "quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
+	container1, err := connector1.Deploy(context.Background(), "quay.io/arcalot/podman-deployer-test-helper:0.1.0")
 	assert.NoError(t, err)
 
 	var wg sync.WaitGroup
@@ -389,7 +389,7 @@ func TestCgroupNsByNamespacePath(t *testing.T) {
 
 	container2, err := connector2.Deploy(
 		context.Background(),
-		"quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
+		"quay.io/arcalot/podman-deployer-test-helper:0.1.0")
 	assert.NoError(t, err)
 
 	wg.Add(1)
@@ -433,7 +433,7 @@ func TestNetworkHost(t *testing.T) {
 	connector, _ := getConnector(t, configtemplate)
 	plugin, err := connector.Deploy(
 		context.Background(),
-		"quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
+		"quay.io/arcalot/podman-deployer-test-helper:0.1.0")
 	assert.NoError(t, err)
 
 	var containerInput = []byte("network host\n")
@@ -494,7 +494,7 @@ func TestClose(t *testing.T) {
 
 	container, err := connector.Deploy(
 		context.Background(),
-		"quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
+		"quay.io/arcalot/podman-deployer-test-helper:0.1.0")
 	assert.NoError(t, err)
 
 	var wg sync.WaitGroup
@@ -551,7 +551,7 @@ func testNetworking(t *testing.T, podmanNetworking string, containerTest string,
 	connector, _ := getConnector(t, configtemplate)
 	plugin, err := connector.Deploy(
 		context.Background(),
-		"quay.io/tsebastiani/arcaflow-engine-deployer-podman-test:latest")
+		"quay.io/arcalot/podman-deployer-test-helper:0.1.0")
 	assert.NoError(t, err)
 
 	var containerInput = []byte(containerTest)
