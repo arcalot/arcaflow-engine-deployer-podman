@@ -10,6 +10,8 @@ import (
 	"go.flow.arcalot.io/pluginsdk/schema"
 )
 
+const notImplemented = "Not implemented yet in Podman deployer"
+
 // Schema describes the deployment options of the Docker deployment mechanism.
 var Schema = schema.NewTypedScopeSchema[*Config](
 	schema.NewStructMappedObjectSchema[*Config](
@@ -84,46 +86,6 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 				nil,
 				nil,
 			),
-			"cgroupNs": schema.NewPropertySchema(
-				schema.NewStringSchema(nil, nil, regexp.MustCompile(`^host|ns:/proc/\d+/ns/cgroup|container:.+|private$`)),
-				schema.NewDisplayValue(schema.PointerTo("CGroup namespace"), schema.PointerTo("Provides the Cgroup Namespace settings for the container"), nil),
-				false,
-				nil,
-				nil,
-				nil,
-				nil,
-				nil,
-			),
-			"networkMode": schema.NewPropertySchema(
-				schema.NewStringSchema(nil, nil, regexp.MustCompile("^bridge:.*|host|none$")),
-				schema.NewDisplayValue(schema.PointerTo("Network Mode"), schema.PointerTo("Provides network settings for the container"), nil),
-				false,
-				nil,
-				nil,
-				nil,
-				nil,
-				nil,
-			),
-			"imageOS": schema.NewPropertySchema(
-				schema.NewStringSchema(nil, nil, regexp.MustCompile("^.*$")),
-				schema.NewDisplayValue(schema.PointerTo("Podman Image OS"), schema.PointerTo("Provides Podman Image Operating System"), nil),
-				false,
-				nil,
-				nil,
-				nil,
-				nil,
-				nil,
-			),
-			"imageArchitecture": schema.NewPropertySchema(
-				schema.NewStringSchema(nil, nil, regexp.MustCompile("^.*$")),
-				schema.NewDisplayValue(schema.PointerTo("Podman image Architecture"), schema.PointerTo("Provides Podman Image Architecture"), nil),
-				false,
-				nil,
-				nil,
-				nil,
-				nil,
-				nil,
-			),
 		},
 	),
 	schema.NewStructMappedObjectSchema[Deployment](
@@ -163,6 +125,16 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 				schema.PointerTo(util.JSONEncode(string(ImagePullPolicyIfNotPresent))),
 				nil,
 			),
+			"imagePlatform": schema.NewPropertySchema(
+				schema.NewStringSchema(nil, nil, regexp.MustCompile("^.+/.+$")),
+				schema.NewDisplayValue(schema.PointerTo("Podman Image OS"), schema.PointerTo("Provides Podman Image Operating System and architecture"), nil),
+				false,
+				nil,
+				nil,
+				nil,
+				nil,
+				[]string{"linux/amd64", "linux/arm64"},
+			),
 		},
 	),
 	schema.NewStructMappedObjectSchema[*container.Config](
@@ -177,7 +149,7 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 				nil,
 				nil,
 				nil,
-			),
+			).Disable(notImplemented),
 			"Domainname": schema.NewPropertySchema(
 				schema.NewStringSchema(schema.IntPointer(1), schema.IntPointer(255), regexp.MustCompile("^[a-zA-Z0-9-_.]+$")),
 				schema.NewDisplayValue(schema.PointerTo("Domain name"), schema.PointerTo("Domain name for the plugin container."), nil),
@@ -187,7 +159,7 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 				nil,
 				nil,
 				nil,
-			),
+			).Disable(notImplemented),
 			"User": schema.NewPropertySchema(
 				schema.NewStringSchema(schema.IntPointer(1), schema.IntPointer(255), regexp.MustCompile("^[a-z_][a-z0-9_-]*[$]?(:[a-z_][a-z0-9_-]*[$]?)$")),
 				schema.NewDisplayValue(schema.PointerTo("Username"), schema.PointerTo("User that will run the command inside the container. Optionally, a group can be specified in the user:group format."), nil),
@@ -197,7 +169,7 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 				nil,
 				nil,
 				nil,
-			),
+			).Disable(notImplemented),
 			"Env": schema.NewPropertySchema(
 				schema.NewListSchema(schema.NewStringSchema(schema.IntPointer(1), schema.IntPointer(32760), regexp.MustCompile("^.+=.+$")), nil, nil),
 				schema.NewDisplayValue(schema.PointerTo("Environment variables"), schema.PointerTo("Environment variables to set on the plugin container."), nil),
@@ -217,7 +189,7 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 				nil,
 				nil,
 				nil,
-			),
+			).Disable(notImplemented),
 			"MacAddress": schema.NewPropertySchema(
 				schema.NewStringSchema(nil, nil, regexp.MustCompile("^[a-fA-F0-9]{2}(:[a-fA-F0-9]{2}){5}$")),
 				schema.NewDisplayValue(schema.PointerTo("MAC address"), schema.PointerTo("Media Access Control address for the container."), nil),
@@ -227,7 +199,7 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 				nil,
 				nil,
 				nil,
-			),
+			).Disable(notImplemented),
 		},
 	),
 	schema.NewStructMappedObjectSchema[*container.HostConfig](
@@ -244,7 +216,7 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 				nil,
 			),
 			"NetworkMode": schema.NewPropertySchema(
-				schema.NewStringSchema(nil, nil, regexp.MustCompile("^(none|bridge|host|container:[a-zA-Z0-9][a-zA-Z0-9_.-]+|[a-zA-Z0-9][a-zA-Z0-9_.-]+)$")),
+				schema.NewStringSchema(nil, nil, regexp.MustCompile("^(none|private|bridge(:.+)?|host|container:[a-zA-Z0-9][a-zA-Z0-9_.-]+|[a-zA-Z0-9][a-zA-Z0-9_.-]+|pasta:.+|slirp4netns:.+|ns:.+)$")),
 				schema.NewDisplayValue(schema.PointerTo("Network mode"), schema.PointerTo("Specifies either the network mode, the container network to attach to, or a name of a Docker network to use."), nil),
 				false,
 				nil,
@@ -277,7 +249,7 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 				nil,
 				nil,
 				nil,
-			),
+			).Disable(notImplemented),
 			"CapAdd": schema.NewPropertySchema(
 				schema.NewListSchema(schema.NewStringSchema(nil, nil, nil), nil, nil),
 				schema.NewDisplayValue(schema.PointerTo("Add capabilities"), schema.PointerTo("Add capabilities to the container."), nil),
@@ -287,7 +259,7 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 				nil,
 				nil,
 				nil,
-			),
+			).Disable(notImplemented),
 			"CapDrop": schema.NewPropertySchema(
 				schema.NewListSchema(schema.NewStringSchema(nil, nil, nil), nil, nil),
 				schema.NewDisplayValue(schema.PointerTo("Drop capabilities"), schema.PointerTo("Drop capabilities from the container."), nil),
@@ -297,13 +269,9 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 				nil,
 				nil,
 				nil,
-			),
+			).Disable(notImplemented),
 			"CgroupnsMode": schema.NewPropertySchema(
-				schema.NewStringEnumSchema(map[string]*schema.DisplayValue{
-					"private": {NameValue: schema.PointerTo("Private")},
-					"host":    {NameValue: schema.PointerTo("Host")},
-					"":        {NameValue: schema.PointerTo("Empty")},
-				}),
+				schema.NewStringSchema(nil, nil, regexp.MustCompile("host|private|ns:.+|container:.+")),
 				schema.NewDisplayValue(schema.PointerTo("CGroup namespace mode"), schema.PointerTo("CGroup namespace mode to use for the container."), nil),
 				false,
 				nil,
@@ -321,7 +289,7 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 				nil,
 				nil,
 				nil,
-			),
+			).Disable(notImplemented),
 			"DnsOptions": schema.NewPropertySchema(
 				schema.NewListSchema(schema.NewStringSchema(nil, nil, nil), nil, nil),
 				schema.NewDisplayValue(schema.PointerTo("DNS options"), schema.PointerTo("DNS options to look for."), nil),
@@ -331,7 +299,7 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 				nil,
 				nil,
 				nil,
-			),
+			).Disable(notImplemented),
 			"DnsSearch": schema.NewPropertySchema(
 				schema.NewListSchema(schema.NewStringSchema(nil, nil, nil), nil, nil),
 				schema.NewDisplayValue(schema.PointerTo("DNS search"), schema.PointerTo("DNS search domain."), nil),
@@ -341,7 +309,7 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 				nil,
 				nil,
 				nil,
-			),
+			).Disable(notImplemented),
 			"ExtraHosts": schema.NewPropertySchema(
 				schema.NewListSchema(schema.NewStringSchema(nil, nil, nil), nil, nil),
 				schema.NewDisplayValue(schema.PointerTo("Extra hosts"), schema.PointerTo("Extra hosts entries to add"), nil),
@@ -351,7 +319,7 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 				nil,
 				nil,
 				nil,
-			),
+			).Disable(notImplemented),
 		},
 	),
 	schema.NewStructMappedObjectSchema[*nat.PortBinding](
@@ -366,7 +334,7 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 				nil,
 				nil,
 				nil,
-			),
+			).Disable(notImplemented),
 			"HostPort": schema.NewPropertySchema(
 				schema.NewStringSchema(nil, nil, regexp.MustCompile("^0-9+$")),
 				schema.NewDisplayValue(schema.PointerTo("Host port"), nil, nil),
@@ -376,7 +344,7 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 				nil,
 				nil,
 				nil,
-			),
+			).Disable(notImplemented),
 		},
 	),
 )

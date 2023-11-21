@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/joho/godotenv"
 	log "go.arcalot.io/log/v2"
 	"os"
 	"os/exec"
@@ -27,10 +26,11 @@ type BasicInspection struct {
 }
 
 func GetPodmanPath() string {
-	if err := godotenv.Load("../../tests/env/test.env"); err != nil {
-		panic(err)
+	envPath := os.Getenv("PODMAN_PATH")
+	if len(envPath) > 0 {
+		return envPath
 	}
-	return os.Getenv("PODMAN_PATH")
+	return "podman"
 }
 
 func RemoveImage(logger log.Logger, image string) {

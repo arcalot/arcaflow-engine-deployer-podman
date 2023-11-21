@@ -5,7 +5,6 @@ go 1.18
 require (
 	github.com/docker/docker v24.0.7+incompatible
 	github.com/docker/go-connections v0.4.0
-	github.com/joho/godotenv v1.5.1
 	go.arcalot.io/assert v1.6.0
 	go.arcalot.io/lang v1.0.0
 	go.flow.arcalot.io/deployer v0.4.0

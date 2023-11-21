@@ -46,8 +46,8 @@ func (c *Connector) Deploy(ctx context.Context, image string) (deployer.Plugin, 
 		SetContainerName(containerName).
 		SetEnv(containerConfig.Env).
 		SetVolumes(hostConfig.Binds).
-		SetCgroupNs(c.config.Podman.CgroupNs).
-		SetNetworkMode(c.config.Podman.NetworkMode)
+		SetCgroupNs(string(hostConfig.CgroupnsMode)).
+		SetNetworkMode(string(hostConfig.NetworkMode))
 
 	stdin, stdout, err := c.podmanCliWrapper.Deploy(image, commandArgs, []string{"--atp"})
 
@@ -74,19 +74,15 @@ func (c *Connector) pullImage(_ context.Context, image string) error {
 	}
 	if c.config.Deployment.ImagePullPolicy == ImagePullPolicyIfNotPresent {
 		imageExists, err := c.podmanCliWrapper.ImageExists(image)
-		podmanPlatform := c.config.Podman.ImageOS + "/" + c.config.Podman.ImageArchitecture
 		if err != nil {
 			return err
 		}
-
 		if *imageExists {
 			c.logger.Debugf("%s: image already present skipping pull", image)
 			return nil
 		}
-		// TODO:fix default values in configuration
-
-		c.logger.Debugf("Pulling image: %s", image)
-		if err := c.podmanCliWrapper.PullImage(image, &podmanPlatform); err != nil {
+		c.logger.Debugf("Pulling image '%s'", image)
+		if err := c.podmanCliWrapper.PullImage(image, c.config.Deployment.ImagePlatform); err != nil {
 			return err
 		}
 	}
