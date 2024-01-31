@@ -48,7 +48,7 @@ func (f factory) Create(config *Config, logger log.Logger) (deployer.Connector, 
 	} else {
 		rngSeed = config.Podman.RngSeed
 	}
-	rng := rand.New(rand.NewSource(rngSeed))
+	rng := rand.New(rand.NewSource(rngSeed)) //nolint:gosec // random number is not a security credential
 
 	var containerNamePrefix string
 	if config.Podman.ContainerNamePrefix == "" {

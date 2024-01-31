@@ -13,6 +13,9 @@ import (
 	"time"
 )
 
+// TestImage repository manifest must include an image built for
+// platform linux/arm64
+const TestImageMultiPlatform = "quay.io/arcalot/arcaflow-plugin-baseimage-python-osbase:latest"
 const TestImage = "quay.io/podman/hello:latest"
 const TestImageNoTag = "quay.io/podman/hello"
 const TestImageNoBaseURL = "hello:latest"
