@@ -50,28 +50,28 @@ func TestPodman_ImageExists(t *testing.T) {
 
 func TestPodman_PullImage(t *testing.T) {
 	logger := log.NewTestLogger(t)
-	tests.RemoveImage(logger, tests.TestImage)
+	tests.RemoveImage(logger, tests.TestImageMultiPlatform)
 
 	podman := NewCliWrapper(tests.GetPodmanPath(), logger)
 	assert.NotNil(t, tests.GetPodmanPath())
 
 	// pull without platform
-	if err := podman.PullImage(tests.TestImage, nil); err != nil {
+	if err := podman.PullImage(tests.TestImageMultiPlatform, nil); err != nil {
 		assert.Nil(t, err)
 	}
 
-	imageArch := tests.InspectImage(logger, tests.TestImage)
+	imageArch := tests.InspectImage(logger, tests.TestImageMultiPlatform)
 	assert.NotNil(t, imageArch)
 
-	tests.RemoveImage(logger, tests.TestImage)
+	tests.RemoveImage(logger, tests.TestImageMultiPlatform)
 	// pull with platform
 	platform := "linux/arm64"
-	if err := podman.PullImage(tests.TestImage, &platform); err != nil {
+	if err := podman.PullImage(tests.TestImageMultiPlatform, &platform); err != nil {
 		assert.Nil(t, err)
 	}
-	imageArch = tests.InspectImage(logger, tests.TestImage)
+	imageArch = tests.InspectImage(logger, tests.TestImageMultiPlatform)
 	assert.Equals(t, platform, fmt.Sprintf("%s/%s", imageArch.Os, imageArch.Architecture))
-	tests.RemoveImage(logger, tests.TestImage)
+	tests.RemoveImage(logger, tests.TestImageMultiPlatform)
 
 	// pull not existing image without baseUrl (cli interactively asks for the image repository)
 	if err := podman.PullImage(tests.TestNotExistingImageNoBaseURL, nil); err != nil {
