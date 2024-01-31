@@ -17,8 +17,6 @@ type CliPlugin struct {
 	stdout         io.ReadCloser
 }
 
-// TODO: unwrap the whole config
-
 func (p *CliPlugin) Write(b []byte) (n int, err error) {
 	return p.stdin.Write(b)
 }

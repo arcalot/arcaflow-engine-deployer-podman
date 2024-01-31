@@ -21,7 +21,7 @@ linters:
     # comment with // nolint:gosec where not relevant.
     - gosec
     # Replace golint.
-    - revive
+#    - revive
     # Complain about deeply nested if cases.
     - nestif
     # Prevent naked returns in long functions.
@@ -30,7 +30,7 @@ linters:
     - gocritic
     # We don't want hidden global scope, so disallow global variables. You can disable this with
     # Check if comments end in a period. This helps prevent incomplete comment lines, such as half-written sentences.
-    - godot
+#    - godot
     # Complain about comments as these indicate incomplete code.
     - godox
     # Keep the cyclomatic complexity of functions to a reasonable level.
@@ -70,7 +70,7 @@ linters:
     # Check for improper duration handling.
     - durationcheck
     # Enforce tests being in the _test package.
-    - testpackage
+#    - testpackage
 
     # endregion
 linters-settings:

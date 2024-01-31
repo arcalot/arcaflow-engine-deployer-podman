@@ -42,7 +42,7 @@ func (p *cliWrapper) ImageExists(image string) (*bool, error) {
 	p.logger.Debugf("Checking whether image exists with command %v", cmd.Args)
 	if err := cmd.Run(); err != nil {
 		return nil, fmt.Errorf(
-			"error while determining if image exists. Stdout: '%s', Stderr: '%s', Cmd error: '%s'",
+			"error while determining if image exists. Stdout: '%s', Stderr: '%s', Cmd error: (%w)",
 			out.String(), errOut.String(), err)
 	}
 	outStr := out.String()
@@ -66,7 +66,7 @@ func (p *cliWrapper) PullImage(image string, platform *string) error {
 	cmd.Stderr = &errOut
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf(
-			"error while pulling image. Stdout: '%s', Stderr: '%s', Cmd error: '%s'",
+			"error while pulling image. Stdout: '%s', Stderr: '%s', Cmd error: (%w)",
 			out.String(), errOut.String(), err)
 	}
 	return nil
