@@ -1,4 +1,4 @@
-FROM quay.io/centos/centos:stream8@sha256:20ef8d90e1bd590f614dccb6e24d612bd4fc85fbe394f2395f103b6aa7140c4d
+FROM quay.io/centos/centos:stream8@sha256:1338a5c9e232a419978dbb2f6f42a71553e0ed53f3332b618f89a19143070d86
 
 COPY tests/test_script.sh /
 RUN dnf install net-tools -y
