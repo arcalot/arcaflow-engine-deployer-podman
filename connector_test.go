@@ -201,7 +201,12 @@ func TestContainerName(t *testing.T) {
 
 	wg.Wait()
 
-	assert.Equals(t, container1.ID() != container2.ID(), true)
+	cid1 := container1.ID()
+	cid2 := container2.ID()
+	logger.Debugf("cid 1: %v", cid1)
+	logger.Debugf("cid 2: %v", cid2)
+
+	assert.Equals(t, cid1 != cid2, true)
 
 	t.Cleanup(func() {
 		assert.NoError(t, container1.Close())
