@@ -203,8 +203,8 @@ func TestContainerName(t *testing.T) {
 
 	cid1 := container1.ID()
 	cid2 := container2.ID()
-	logger.Debugf("cid 1: %v", cid1)
-	logger.Debugf("cid 2: %v", cid2)
+	fmt.Printf("cid 1: %v", cid1)
+	fmt.Printf("cid 2: %v", cid2)
 
 	assert.Equals(t, cid1 != cid2, true)
 
