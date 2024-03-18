@@ -12,13 +12,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+        uses: actions/checkout@v4
       - name: Pin Golang version for linting
-        uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ env.go_version }}
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc # v3
+        uses: golangci/golangci-lint-action@v4
         with:
           version: v1.55.2
   test:
@@ -28,7 +28,7 @@ jobs:
       GITHUB_ACTION: true
     steps:
       - name: Checkout
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+        uses: actions/checkout@v4
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
@@ -57,7 +57,7 @@ jobs:
           go tool cover -func /tmp/coverage.out
           echo "::endgroup::"
       - name: Upload test log
-        uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32 # v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: test-results
