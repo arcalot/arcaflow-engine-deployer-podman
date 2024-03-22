@@ -174,6 +174,8 @@ func TestContainerName(t *testing.T) {
 
 	t.Cleanup(func() { assert.NoError(t, container2.Close()) })
 
+	assert.Equals(t, container1.ID() != container2.ID(), true)
+
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
@@ -183,15 +185,22 @@ func TestContainerName(t *testing.T) {
 		assert.NoErrorR[int](t)(container2.Write(containerInput))
 	}()
 
-	time.Sleep(1 * time.Second)
-	assert.Equals(t, tests.IsContainerRunning(logger, cfg1.Podman.Path, container1.ID()), true)
-
-	time.Sleep(1 * time.Second)
-	assert.Equals(t, tests.IsContainerRunning(logger, cfg2.Podman.Path, container2.ID()), true)
+	// Wait for each of the containers to start running, and then wait for our
+	// go-routine to complete; arbitrarily fail the test if it doesn't all
+	// happen within 30 seconds.
+	end := time.Now().Add(30 * time.Second)
+	for !tests.IsContainerRunning(logger, cfg1.Podman.Path, container1.ID()) {
+		assert.Equals(t, time.Now().Before(end), true)
+		time.Sleep(1 * time.Second)
+	}
+	for !tests.IsContainerRunning(logger, cfg2.Podman.Path, container2.ID()) {
+		assert.Equals(t, time.Now().Before(end), true)
+		time.Sleep(1 * time.Second)
+	}
 
 	wg.Wait()
 
-	assert.Equals(t, container1.ID() != container2.ID(), true)
+	assert.Equals(t, time.Now().Before(end), true)
 }
 
 var cgroupTemplate = `
