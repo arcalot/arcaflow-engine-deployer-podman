@@ -253,8 +253,24 @@ func TestCgroupNsByContainerName(t *testing.T) {
 		_, err := container1.Write(containerInput)
 		assert.NoError(t, err)
 	}()
-	// sleeps to wait the first container become ready and attach to its cgroup ns
-	time.Sleep(3 * time.Second)
+
+	// Wait for each of the containers to start running so that we can collect
+	// their cgroup names, and then wait for our go-routine to complete;
+	// arbitrarily fail the test if it doesn't all happen within 30 seconds.
+	end := time.Now().Add(30 * time.Second)
+	var ns1, ns2 string
+	for ns1 == "" {
+		ns1 = tests.GetPodmanPsNsWithFormat(logger, config.Podman.Path, container1.ID(), "{{.CGROUPNS}}")
+		assert.Equals(t, time.Now().Before(end), true)
+		time.Sleep(1 * time.Second)
+	}
+	for ns2 == "" {
+		ns2 = tests.GetPodmanPsNsWithFormat(logger, config.Podman.Path, container2.ID(), "{{.CGROUPNS}}")
+		assert.Equals(t, time.Now().Before(end), true)
+		time.Sleep(1 * time.Second)
+	}
+	assert.Equals(t, ns1 == ns2, true)
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -262,10 +278,8 @@ func TestCgroupNsByContainerName(t *testing.T) {
 		_, err := container2.Write(containerInput)
 		assert.NoError(t, err)
 	}()
-	ns1 := tests.GetPodmanPsNsWithFormat(logger, config.Podman.Path, container1.ID(), "{{.CGROUPNS}}")
-	ns2 := tests.GetPodmanPsNsWithFormat(logger, config.Podman.Path, container2.ID(), "{{.CGROUPNS}}")
-	assert.Equals(t, ns1 == ns2, true)
 	wg.Wait()
+	assert.Equals(t, time.Now().Before(end), true)
 }
 
 func TestPrivateCgroupNs(t *testing.T) {
