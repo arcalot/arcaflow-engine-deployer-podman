@@ -334,7 +334,6 @@ func TestHostCgroupNs(t *testing.T) {
 		return
 	}
 	logger := log.NewTestLogger(t)
-	var wg sync.WaitGroup
 
 	// Assume sleep is in the path. Because it's not in the same location for every user.
 	userCgroupNs := tests.GetCommmandCgroupNs(logger, "sleep", []string{"3"})
@@ -352,21 +351,30 @@ func TestHostCgroupNs(t *testing.T) {
 
 	t.Cleanup(func() { assert.NoError(t, container.Close()) })
 
+	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		var containerInput = []byte("sleep 5\n")
 		assert.NoErrorR[int](t)(container.Write(containerInput))
 	}()
-	wg.Wait()
-	// waits for the container to become ready
-	time.Sleep(2 * time.Second)
 
-	var podmanCgroupNs = tests.GetPodmanCgroupNs(logger, config.Podman.Path, container.ID())
+	// Wait for the container to start running so that we can collect its
+	// cgroup name, and then wait for our go-routine to complete; arbitrarily
+	// fail the test if it doesn't all happen within 30 seconds.
+	end := time.Now().Add(30 * time.Second)
+	var podmanCgroupNs string
+	for podmanCgroupNs == "" {
+		podmanCgroupNs = tests.GetPodmanCgroupNs(logger, config.Podman.Path, container.ID())
+		assert.Equals(t, time.Now().Before(end), true)
+		time.Sleep(1 * time.Second)
+	}
 	assert.NotNil(t, podmanCgroupNs)
+	assert.Equals(t, userCgroupNs, podmanCgroupNs)
+
 	wg.Wait()
 
-	assert.Equals(t, userCgroupNs, podmanCgroupNs)
+	assert.Equals(t, time.Now().Before(end), true)
 }
 
 func TestCgroupNsByNamespacePath(t *testing.T) {
