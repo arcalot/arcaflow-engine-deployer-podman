@@ -296,6 +296,7 @@ func TestPrivateCgroupNs(t *testing.T) {
 }
 
 func TestHostCgroupNs(t *testing.T) {
+	//goland:noinspection GoBoolExpressions  // The linter cannot tell that this expression is not constant.
 	if runtime.GOOS != "linux" {
 		t.Skipf("Not running on Linux. Skipping cgroup test.")
 		return
