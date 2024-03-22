@@ -286,14 +286,13 @@ func TestPrivateCgroupNs(t *testing.T) {
 	// get the user cgroup ns
 	logger := log.NewTestLogger(t)
 
-	var wg sync.WaitGroup
 	// Assume sleep is in the path. Because it's not in the same location for every user.
 	userCgroupNs := tests.GetCommmandCgroupNs(logger, "sleep", []string{"3"})
 	assert.NotNil(t, userCgroupNs)
 	logger.Debugf("Detected cgroup namespace for user: %s", userCgroupNs)
 
 	containerNamePrefix := "test"
-	// The first container will run with a private namespace that will be created at startup
+	// The container will run with a private namespace that will be created at startup
 	configtemplate := fmt.Sprintf(cgroupTemplate, containerNamePrefix, "private")
 	connector, config := getConnector(t, configtemplate)
 	container, err := connector.Deploy(
@@ -303,6 +302,7 @@ func TestPrivateCgroupNs(t *testing.T) {
 
 	t.Cleanup(func() { assert.NoError(t, container.Close()) })
 
+	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -310,12 +310,21 @@ func TestPrivateCgroupNs(t *testing.T) {
 		assert.NoErrorR[int](t)(container.Write(containerInput))
 	}()
 
-	time.Sleep(2 * time.Second)
+	// Wait for the container to start running so that we can collect its
+	// cgroup name, and then wait for our go-routine to complete; arbitrarily
+	// fail the test if it doesn't all happen within 30 seconds.
+	end := time.Now().Add(30 * time.Second)
+	var podmanCgroupNs string
+	for podmanCgroupNs == "" {
+		podmanCgroupNs = tests.GetPodmanCgroupNs(logger, config.Podman.Path, container.ID())
+		assert.Equals(t, time.Now().Before(end), true)
+		time.Sleep(1 * time.Second)
+	}
+	assert.Equals(t, userCgroupNs != podmanCgroupNs, true)
 
-	var podmanCgroupNs = tests.GetPodmanCgroupNs(logger, config.Podman.Path, container.ID())
 	wg.Wait()
 
-	assert.Equals(t, userCgroupNs != podmanCgroupNs, true)
+	assert.Equals(t, time.Now().Before(end), true)
 }
 
 func TestHostCgroupNs(t *testing.T) {
