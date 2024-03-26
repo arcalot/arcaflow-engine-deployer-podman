@@ -134,8 +134,7 @@ func TestSimpleVolume(t *testing.T) {
 	t.Cleanup(func() { assert.NoError(t, container.Close()) })
 
 	var containerInput = []byte("volume\n")
-	_, err = container.Write(containerInput)
-	assert.NoError(t, err)
+	assert.NoErrorR[int](t)(container.Write(containerInput))
 	// Note: If it ends up with length zero buffer, restarting the VM may help:
 	// https://stackoverflow.com/questions/71977532/podman-mount-host-volume-return-error-statfs-no-such-file-or-directory-in-ma
 	readBuffer := readOutputUntil(t, container, string(fileContent))
@@ -250,8 +249,7 @@ func TestCgroupNsByContainerName(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		var containerInput = []byte("sleep 7\n")
-		_, err := container1.Write(containerInput)
-		assert.NoError(t, err)
+		assert.NoErrorR[int](t)(container1.Write(containerInput))
 	}()
 
 	// Wait for each of the containers to start running so that we can collect
@@ -275,8 +273,7 @@ func TestCgroupNsByContainerName(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		var containerInput = []byte("sleep 5\n")
-		_, err := container2.Write(containerInput)
-		assert.NoError(t, err)
+		assert.NoErrorR[int](t)(container2.Write(containerInput))
 	}()
 	wg.Wait()
 	assert.Equals(t, time.Now().Before(end), true)
@@ -396,8 +393,7 @@ func TestCgroupNsByNamespacePath(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		var containerInput = []byte("sleep 10\n")
-		_, err := container1.Write(containerInput)
-		assert.NoError(t, err)
+		assert.NoErrorR[int](t)(container1.Write(containerInput))
 	}()
 
 	// Wait for each of the containers to start running so that we can collect
@@ -431,8 +427,7 @@ func TestCgroupNsByNamespacePath(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		var containerInput = []byte("sleep 5\n")
-		_, err := container2.Write(containerInput)
-		assert.NoError(t, err)
+		assert.NoErrorR[int](t)(container2.Write(containerInput))
 	}()
 
 	var ns2 string
@@ -501,7 +496,7 @@ func TestNetworkBridge(t *testing.T) {
 	// network settings:
 	// ip 10.88.0.123
 	// mac 44:33:22:11:00:99
-	// then asks to the container to run an ifconfig (tests/test_script.sh, test_network())
+	// then asks the container to run an ifconfig (tests/test_script.sh, test_network())
 	// through ATP to check if the settings have been effectively accepted
 	if tests.IsRunningOnGithub() {
 		t.Skipf("bridge networking not supported on GitHub actions")
@@ -566,18 +561,9 @@ func readOutputUntil(t *testing.T, plugin io.Reader, lookForOutput string) []byt
 	return readBuffer[:n]
 }
 
-func checkIfconfig(t *testing.T) string {
-	path, err := exec.LookPath("ifconfig")
-	if err != nil {
-		t.Fatalf("impossible to run test: %s , ifconfig not installed, skipping.", t.Name())
-	}
-	assert.NoError(t, err)
-	return path
-}
-
 func testNetworking(t *testing.T, podmanNetworking string, containerTest string, expectedOutput *string, ip *string, mac *string) {
 	logger := log.NewTestLogger(t)
-	checkIfconfig(t)
+	assert.NoErrorR[string](t)(exec.LookPath("ifconfig"))
 
 	containerNamePrefix := "networking"
 	// The first container will run with the host namespace
@@ -593,8 +579,7 @@ func testNetworking(t *testing.T, podmanNetworking string, containerTest string,
 	var containerInput = []byte(containerTest)
 	// the test script will output a string containing the desired ip address and mac address
 	// filtered by the desired interface name
-	_, err = plugin.Write(containerInput)
-	assert.NoError(t, err)
+	assert.NoErrorR[int](t)(plugin.Write(containerInput))
 
 	var readBuffer []byte
 	if expectedOutput != nil {
