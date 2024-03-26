@@ -113,7 +113,7 @@ var volumeConfig = `
    "deployment":{
       "host":{
          "Binds":[
-            "./tests/volume:/test"
+            "./tests/volume:/test:Z"
          ]
       }
    },
@@ -124,19 +124,11 @@ var volumeConfig = `
 `
 
 func TestSimpleVolume(t *testing.T) {
-	logger := log.NewTestLogger(t)
 	fileContent, err := os.ReadFile("./tests/volume/test_file.txt")
 	assert.NoError(t, err)
 
 	connector, _ := getConnector(t, volumeConfig)
-	cwd, err := os.Getwd()
 	assert.NoError(t, err)
-	// disable selinux on the test folder in order to make the file readable from within the container
-	cmd := exec.Command("chcon", "-Rt", "svirt_sandbox_file_t", fmt.Sprintf("%s/tests/volume", cwd)) //nolint:gosec
-	err = cmd.Run()
-	if err != nil {
-		logger.Warningf("failed to set SELinux permissions on folder, chcon error: %s, this may cause test failure if SELinux is enabled.", err.Error())
-	}
 
 	container, err := connector.Deploy(
 		context.Background(),
