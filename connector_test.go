@@ -546,26 +546,24 @@ func TestClose(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// readOutputUntil helper function, reads from plugin (io.Reader) until finds lookforOutput
+// readOutputUntil is a helper function which reads from the provided io.Reader
+// until it receives the specified string or EOF; returns the bytes read.
 func readOutputUntil(t *testing.T, plugin io.Reader, lookForOutput string) []byte {
 	var n int
 	readBuffer := make([]byte, 10240)
-	for {
+	for !strings.Contains(string(readBuffer[:n]), lookForOutput) {
 		currentBuffer := make([]byte, 1024)
 		readBytes, err := plugin.Read(currentBuffer)
-		if err != nil {
-			if err != io.EOF {
-				t.Fatalf("error while reading stdout: %s", err.Error())
-			} else {
-				return readBuffer[:n]
-			}
-		}
 		copy(readBuffer[n:], currentBuffer[:readBytes])
 		n += readBytes
-		if strings.Contains(string(readBuffer[:n]), lookForOutput) {
-			return readBuffer[:n]
+
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			t.Fatalf("error while reading stdout: %s", err.Error())
 		}
 	}
+	return readBuffer[:n]
 }
 
 func checkIfconfig(t *testing.T) string {
