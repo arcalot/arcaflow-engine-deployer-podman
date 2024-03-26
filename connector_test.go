@@ -109,7 +109,7 @@ var volumeConfig = `
    "deployment":{
       "host":{
          "Binds":[
-            "./tests/volume:/test:Z"
+            "./tests/volume:/test%s"
          ]
       }
    },
@@ -119,12 +119,12 @@ var volumeConfig = `
 }
 `
 
-func TestSimpleVolume(t *testing.T) {
+func bindMountHelper(t *testing.T, options string) {
+	t.Helper()
 	fileContent, err := os.ReadFile("./tests/volume/test_file.txt")
 	assert.NoError(t, err)
 
-	connector, _ := getConnector(t, volumeConfig)
-	assert.NoError(t, err)
+	connector, _ := getConnector(t, fmt.Sprintf(volumeConfig, options))
 
 	container, err := connector.Deploy(
 		context.Background(),
@@ -139,6 +139,20 @@ func TestSimpleVolume(t *testing.T) {
 	// https://stackoverflow.com/questions/71977532/podman-mount-host-volume-return-error-statfs-no-such-file-or-directory-in-ma
 	readBuffer := readOutputUntil(t, container, string(fileContent))
 	assert.GreaterThan(t, len(readBuffer), 0)
+}
+
+func TestBindMount(t *testing.T) {
+	scenarios := map[string]string{
+		"No options": "",
+		"Private":    ":Z",
+		"Shared":     ":z",
+		"ReadOnly":   ":ro",
+		"Multiple":   ":z,ro,noexec",
+	}
+	for name, s := range scenarios {
+		options := s
+		t.Run(name, func(t *testing.T) { bindMountHelper(t, options) })
+	}
 }
 
 var nameTemplate = `
