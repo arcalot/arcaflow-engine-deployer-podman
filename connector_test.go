@@ -10,7 +10,6 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -189,14 +188,9 @@ func TestContainerName(t *testing.T) {
 
 	assert.Equals(t, container1.ID() != container2.ID(), true)
 
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		var containerInput = []byte("sleep 3\n")
-		assert.NoErrorR[int](t)(container1.Write(containerInput))
-		assert.NoErrorR[int](t)(container2.Write(containerInput))
-	}()
+	containerInput := []byte("sleep 3\n")
+	assert.NoErrorR[int](t)(container1.Write(containerInput))
+	assert.NoErrorR[int](t)(container2.Write(containerInput))
 
 	// Wait for each of the containers to start running, and then wait for our
 	// go-routine to complete; arbitrarily fail the test if it doesn't all
@@ -210,10 +204,6 @@ func TestContainerName(t *testing.T) {
 		assert.Equals(t, time.Now().Before(end), true)
 		time.Sleep(1 * time.Second)
 	}
-
-	wg.Wait()
-
-	assert.Equals(t, time.Now().Before(end), true)
 }
 
 var cgroupTemplate = `
@@ -258,13 +248,7 @@ func TestCgroupNsByContainerName(t *testing.T) {
 
 	t.Cleanup(func() { assert.NoError(t, container2.Close()) })
 
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		var containerInput = []byte("sleep 7\n")
-		assert.NoErrorR[int](t)(container1.Write(containerInput))
-	}()
+	assert.NoErrorR[int](t)(container1.Write([]byte("sleep 7\n")))
 
 	// Wait for each of the containers to start running so that we can collect
 	// their cgroup names, and then wait for our go-routine to complete;
@@ -283,14 +267,8 @@ func TestCgroupNsByContainerName(t *testing.T) {
 	}
 	assert.Equals(t, ns1 == ns2, true)
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		var containerInput = []byte("sleep 5\n")
-		assert.NoErrorR[int](t)(container2.Write(containerInput))
-	}()
-	wg.Wait()
-	assert.Equals(t, time.Now().Before(end), true)
+	// Release the second container from its input prompt via a no-op command.
+	assert.NoErrorR[int](t)(container2.Write([]byte(":\n")))
 }
 
 func TestPrivateCgroupNs(t *testing.T) {
@@ -313,13 +291,7 @@ func TestPrivateCgroupNs(t *testing.T) {
 
 	t.Cleanup(func() { assert.NoError(t, container.Close()) })
 
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		var containerInput = []byte("sleep 5\n")
-		assert.NoErrorR[int](t)(container.Write(containerInput))
-	}()
+	assert.NoErrorR[int](t)(container.Write([]byte("sleep 5\n")))
 
 	// Wait for the container to start running so that we can collect its
 	// cgroup name, and then wait for our go-routine to complete; arbitrarily
@@ -332,10 +304,6 @@ func TestPrivateCgroupNs(t *testing.T) {
 		time.Sleep(1 * time.Second)
 	}
 	assert.Equals(t, userCgroupNs != podmanCgroupNs, true)
-
-	wg.Wait()
-
-	assert.Equals(t, time.Now().Before(end), true)
 }
 
 func TestHostCgroupNs(t *testing.T) {
@@ -362,13 +330,7 @@ func TestHostCgroupNs(t *testing.T) {
 
 	t.Cleanup(func() { assert.NoError(t, container.Close()) })
 
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		var containerInput = []byte("sleep 5\n")
-		assert.NoErrorR[int](t)(container.Write(containerInput))
-	}()
+	assert.NoErrorR[int](t)(container.Write([]byte("sleep 5\n")))
 
 	// Wait for the container to start running so that we can collect its
 	// cgroup name, and then wait for our go-routine to complete; arbitrarily
@@ -382,10 +344,6 @@ func TestHostCgroupNs(t *testing.T) {
 	}
 	assert.NotNil(t, podmanCgroupNs)
 	assert.Equals(t, userCgroupNs, podmanCgroupNs)
-
-	wg.Wait()
-
-	assert.Equals(t, time.Now().Before(end), true)
 }
 
 func TestCgroupNsByNamespacePath(t *testing.T) {
@@ -402,13 +360,7 @@ func TestCgroupNsByNamespacePath(t *testing.T) {
 
 	t.Cleanup(func() { assert.NoError(t, container1.Close()) })
 
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		var containerInput = []byte("sleep 10\n")
-		assert.NoErrorR[int](t)(container1.Write(containerInput))
-	}()
+	assert.NoErrorR[int](t)(container1.Write([]byte("sleep 10\n")))
 
 	// Wait for each of the containers to start running so that we can collect
 	// their cgroup names, and then wait for our go-routine to complete;
@@ -437,12 +389,7 @@ func TestCgroupNsByNamespacePath(t *testing.T) {
 
 	t.Cleanup(func() { assert.NoError(t, container2.Close()) })
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		var containerInput = []byte("sleep 5\n")
-		assert.NoErrorR[int](t)(container2.Write(containerInput))
-	}()
+	assert.NoErrorR[int](t)(container2.Write([]byte("sleep 5\n")))
 
 	var ns2 string
 	for ns2 == "" {
@@ -450,12 +397,7 @@ func TestCgroupNsByNamespacePath(t *testing.T) {
 		assert.Equals(t, time.Now().Before(end), true)
 		time.Sleep(1 * time.Second)
 	}
-	assert.NotNil(t, ns2)
 	assert.Equals(t, ns1 == ns2, true)
-
-	wg.Wait()
-
-	assert.Equals(t, time.Now().Before(end), true)
 }
 
 var networkTemplate = `
@@ -542,13 +484,7 @@ func TestClose(t *testing.T) {
 		"quay.io/arcalot/podman-deployer-test-helper:0.1.0")
 	assert.NoError(t, err)
 
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		var containerInput = []byte("sleep 10\n")
-		assert.NoErrorR[int](t)(container.Write(containerInput))
-	}()
+	assert.NoErrorR[int](t)(container.Write([]byte("sleep 10\n")))
 
 	time.Sleep(2 * time.Second)
 	err = container.Close()
