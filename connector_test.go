@@ -96,8 +96,7 @@ func TestEnv(t *testing.T) {
 
 	t.Cleanup(func() { assert.NoError(t, container.Close()) })
 
-	var containerInput = []byte("env\n")
-	assert.NoErrorR[int](t)(container.Write(containerInput))
+	assert.NoErrorR[int](t)(container.Write([]byte("env\n")))
 
 	readBuffer := readOutputUntil(t, container, envVars)
 	assert.GreaterThan(t, len(readBuffer), 0)
@@ -132,8 +131,8 @@ func bindMountHelper(t *testing.T, options string) {
 
 	t.Cleanup(func() { assert.NoError(t, container.Close()) })
 
-	var containerInput = []byte("volume\n")
-	assert.NoErrorR[int](t)(container.Write(containerInput))
+	assert.NoErrorR[int](t)(container.Write([]byte("volume\n")))
+
 	// Note: If it ends up with length zero buffer, restarting the VM may help:
 	// https://stackoverflow.com/questions/71977532/podman-mount-host-volume-return-error-statfs-no-such-file-or-directory-in-ma
 	readBuffer := readOutputUntil(t, container, string(fileContent))
@@ -192,9 +191,8 @@ func TestContainerName(t *testing.T) {
 	assert.NoErrorR[int](t)(container1.Write(containerInput))
 	assert.NoErrorR[int](t)(container2.Write(containerInput))
 
-	// Wait for each of the containers to start running, and then wait for our
-	// go-routine to complete; arbitrarily fail the test if it doesn't all
-	// happen within 30 seconds.
+	// Wait for each of the containers to start running; arbitrarily fail the
+	// test if it doesn't all happen within 30 seconds.
 	end := time.Now().Add(30 * time.Second)
 	for !tests.IsContainerRunning(logger, cfg1.Podman.Path, container1.ID()) {
 		assert.Equals(t, time.Now().Before(end), true)
@@ -251,8 +249,8 @@ func TestCgroupNsByContainerName(t *testing.T) {
 	assert.NoErrorR[int](t)(container1.Write([]byte("sleep 7\n")))
 
 	// Wait for each of the containers to start running so that we can collect
-	// their cgroup names, and then wait for our go-routine to complete;
-	// arbitrarily fail the test if it doesn't all happen within 30 seconds.
+	// their cgroup names; arbitrarily fail the test if it doesn't all happen
+	// within 30 seconds.
 	end := time.Now().Add(30 * time.Second)
 	var ns1, ns2 string
 	for ns1 == "" {
@@ -294,8 +292,8 @@ func TestPrivateCgroupNs(t *testing.T) {
 	assert.NoErrorR[int](t)(container.Write([]byte("sleep 5\n")))
 
 	// Wait for the container to start running so that we can collect its
-	// cgroup name, and then wait for our go-routine to complete; arbitrarily
-	// fail the test if it doesn't all happen within 30 seconds.
+	// cgroup name; arbitrarily fail the test if it doesn't all happen within
+	// 30 seconds.
 	end := time.Now().Add(30 * time.Second)
 	var podmanCgroupNs string
 	for podmanCgroupNs == "" {
@@ -333,8 +331,8 @@ func TestHostCgroupNs(t *testing.T) {
 	assert.NoErrorR[int](t)(container.Write([]byte("sleep 5\n")))
 
 	// Wait for the container to start running so that we can collect its
-	// cgroup name, and then wait for our go-routine to complete; arbitrarily
-	// fail the test if it doesn't all happen within 30 seconds.
+	// cgroup name; arbitrarily fail the test if it doesn't all happen within
+	// 30 seconds.
 	end := time.Now().Add(30 * time.Second)
 	var podmanCgroupNs string
 	for podmanCgroupNs == "" {
@@ -363,8 +361,8 @@ func TestCgroupNsByNamespacePath(t *testing.T) {
 	assert.NoErrorR[int](t)(container1.Write([]byte("sleep 10\n")))
 
 	// Wait for each of the containers to start running so that we can collect
-	// their cgroup names, and then wait for our go-routine to complete;
-	// arbitrarily fail the test if it doesn't all happen within 30 seconds.
+	// their cgroup names; arbitrarily fail the test if it doesn't all happen
+	// within 30 seconds.
 	end := time.Now().Add(30 * time.Second)
 	var ns1 string
 	for ns1 == "" {
