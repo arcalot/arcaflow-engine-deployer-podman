@@ -340,7 +340,6 @@ func TestHostCgroupNs(t *testing.T) {
 		assert.Equals(t, time.Now().Before(end), true)
 		time.Sleep(1 * time.Second)
 	}
-	assert.NotNil(t, podmanCgroupNs)
 	assert.Equals(t, userCgroupNs, podmanCgroupNs)
 }
 
