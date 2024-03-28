@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/opencontainers/selinux/go-selinux"
 	"io"
 	"os"
 	"os/exec"
@@ -12,7 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/opencontainers/selinux/go-selinux"
 	"go.arcalot.io/assert"
 	log "go.arcalot.io/log/v2"
 	"go.flow.arcalot.io/deployer"
@@ -107,7 +107,7 @@ var volumeConfig = `
    "deployment":{
       "host":{
          "Binds":[
-            "./tests/volume:/test%s"
+            "%s:/test/test_file.txt%s"
          ]
       }
    },
@@ -117,31 +117,42 @@ var volumeConfig = `
 }
 `
 
+// bindMountHelper is a helper function which tests plugins with a file
+// bind-mounted inside the container.  Options for the mount and the expected
+// outcome of the test are provided by parameters.  The test creates a
+// temporary file containing appropriate content, configures that file to be
+// mounted inside the container, and then starts the plugin; the test then
+// tells the plugin to output the contents of the mapped file and checks it
+// against the value originally written to the file.
 func bindMountHelper(t *testing.T, options string, expectedPass bool) {
-	fileContent, err := os.ReadFile("./tests/volume/test_file.txt")
-	assert.NoError(t, err)
+	fileContent := fmt.Sprintf("bind mount test with option %q\n", options)
+	mountFile := assert.NoErrorR[*os.File](t)(os.CreateTemp("", "bind_mount_test_*.txt"))
+	t.Cleanup(func() { assert.NoError(t, os.Remove(mountFile.Name())) })
+	assert.NoErrorR[int](t)(mountFile.WriteString(fileContent))
+	assert.NoError(t, mountFile.Close())
+	connector, _ := getConnector(t, fmt.Sprintf(volumeConfig, mountFile.Name(), options))
 
-	connector, _ := getConnector(t, fmt.Sprintf(volumeConfig, options))
-
-	if tests.IsRunningOnLinux() && options == "" && selinux.GetEnabled() {
-		// On Linux, bind mounts without relabeling options will fail when
-		// SELinux is enabled.  So, reset expectations appropriately.
-		expectedPass = false
-	}
-
-	container, err := connector.Deploy(
+	// Run the plugin
+	container := assert.NoErrorR[deployer.Plugin](t)(connector.Deploy(
 		context.Background(),
-		"quay.io/arcalot/podman-deployer-test-helper:0.1.0")
-	assert.NoError(t, err)
-
+		"quay.io/arcalot/podman-deployer-test-helper:0.1.0"))
 	t.Cleanup(func() { assert.NoError(t, container.Close()) })
 
+	// Tell the plugin to output the contents of the mapped file.
 	assert.NoErrorR[int](t)(container.Write([]byte("volume\n")))
 
 	// Note: If it ends up with length zero buffer, restarting the VM may help:
 	// https://stackoverflow.com/questions/71977532/podman-mount-host-volume-return-error-statfs-no-such-file-or-directory-in-ma
-	readBuffer := readOutputUntil(t, container, string(fileContent))
-	assert.Equals(t, strings.Contains(string(readBuffer), string(fileContent)), expectedPass)
+	readBuffer := readOutputUntil(t, container, fileContent)
+	if expectedPass {
+		assert.Contains(t, string(readBuffer), fileContent)
+	} else {
+		// If this assertion fails, then we actually found what we were looking
+		// for (despite our hopes to the contrary), so having the failure
+		// message include the strings probably isn't important, and so we can
+		// get by without an `assert.NotContains()` function.
+		assert.Equals(t, strings.Contains(string(readBuffer), fileContent), false)
+	}
 }
 
 func TestBindMount(t *testing.T) {
@@ -150,15 +161,21 @@ func TestBindMount(t *testing.T) {
 		expectedPass bool
 	}
 	scenarios := map[string]param{
-		"ReadOnly":   param{":ro", true},
-		"Multiple":   param{":ro,noexec", true},
-		"No options": param{"", true},
+		"ReadOnly":   {":ro", true},
+		"Multiple":   {":ro,noexec", true},
+		"No options": {"", true},
 	}
 	if tests.IsRunningOnLinux() {
 		// The SELinux options seem to cause problems on Mac OS X, so only test
 		// them on Linux.
 		scenarios["Private"] = param{":Z", true}
 		scenarios["Shared"] = param{":z", true}
+		if selinux.GetEnabled() {
+			// On Linux, bind mounts without relabeling options will fail when
+			// SELinux is enabled.  So, reset expectations appropriately.
+			scenarios["No options"] = param{scenarios["No options"].option, false}
+		}
+
 	}
 	for name, p := range scenarios {
 		param := p
