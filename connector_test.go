@@ -160,7 +160,7 @@ func TestBindMount(t *testing.T) {
 		option       string
 		expectedPass bool
 	}
-	scenarios := map[string]param{
+	scenarios := map[string]*param{
 		"ReadOnly":   {":ro", true},
 		"Multiple":   {":ro,noexec", true},
 		"No options": {"", true},
@@ -168,12 +168,14 @@ func TestBindMount(t *testing.T) {
 	if tests.IsRunningOnLinux() {
 		// The SELinux options seem to cause problems on Mac OS X, so only test
 		// them on Linux.
-		scenarios["Private"] = param{":Z", true}
-		scenarios["Shared"] = param{":z", true}
+		scenarios["Private"] = &param{":Z", true}
+		scenarios["Shared"] = &param{":z", true}
 		if selinux.GetEnabled() {
 			// On Linux, bind mounts without relabeling options will fail when
 			// SELinux is enabled.  So, reset expectations appropriately.
-			scenarios["No options"] = param{scenarios["No options"].option, false}
+			scenarios["No options"].expectedPass = false
+			scenarios["ReadOnly"].expectedPass = false
+			scenarios["Multiple"].option = ":Z,ro,exec"
 		}
 
 	}
