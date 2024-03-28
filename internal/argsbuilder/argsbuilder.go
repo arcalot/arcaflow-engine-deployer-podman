@@ -19,7 +19,7 @@ func (a *argsBuilder) SetEnv(env []string) ArgsBuilder {
 
 func (a *argsBuilder) SetVolumes(binds []string) ArgsBuilder {
 	for _, v := range binds {
-		if tokens := strings.Split(v, ":"); len(tokens) == 2 {
+		if tokens := strings.Split(v, ":"); len(tokens) == 2 || len(tokens) == 3 {
 			*a.commandArgs = append(*a.commandArgs, "-v", v)
 		}
 	}
