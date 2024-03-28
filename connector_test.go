@@ -155,30 +155,60 @@ func bindMountHelper(t *testing.T, options string, expectedPass bool) {
 	}
 }
 
-func TestBindMount(t *testing.T) {
-	type param struct {
-		option       string
-		expectedPass bool
+type bindMountParam struct {
+	option       string
+	expectedPass bool
+}
+
+func TestBindMountNonLinux(t *testing.T) {
+	if tests.IsRunningOnLinux() {
+		t.Skip("Running on Linux; skipping.")
 	}
-	scenarios := map[string]*param{
+
+	scenarios := map[string]*bindMountParam{
+		"No options": {"", true},
 		"ReadOnly":   {":ro", true},
 		"Multiple":   {":ro,noexec", true},
-		"No options": {"", true},
 	}
-	if tests.IsRunningOnLinux() {
-		// The SELinux options seem to cause problems on Mac OS X, so only test
-		// them on Linux.
-		scenarios["Private"] = &param{":Z", true}
-		scenarios["Shared"] = &param{":z", true}
-		if selinux.GetEnabled() {
-			// On Linux, bind mounts without relabeling options will fail when
-			// SELinux is enabled.  So, reset expectations appropriately.
-			scenarios["No options"].expectedPass = false
-			scenarios["ReadOnly"].expectedPass = false
-			scenarios["Multiple"].option = ":Z,ro,exec"
-		}
 
+	for name, p := range scenarios {
+		param := p
+		t.Run(name, func(t *testing.T) { bindMountHelper(t, param.option, param.expectedPass) })
 	}
+}
+
+func TestBindMountNonSELinux(t *testing.T) {
+	if !tests.IsRunningOnLinux() || selinux.GetEnabled() {
+		t.Skip("Not running on Linux with SELinux disabled; skipping.")
+	}
+
+	scenarios := map[string]*bindMountParam{
+		"No options": {"", true},
+		"ReadOnly":   {":ro", true},
+		"Private":    {":Z", true},
+		"Shared":     {":z", true},
+		"Multiple":   {":ro,noexec", true},
+	}
+
+	for name, p := range scenarios {
+		param := p
+		t.Run(name, func(t *testing.T) { bindMountHelper(t, param.option, param.expectedPass) })
+	}
+}
+
+func TestBindMountSELinux(t *testing.T) {
+	if !selinux.GetEnabled() {
+		t.Skip("SELinux is not enabled; skipping.")
+	}
+
+	scenarios := map[string]*bindMountParam{
+		"No options": {"", false},
+		"ReadOnly":   {":ro", false},
+		"Private":    {":Z", true},
+		"Shared":     {":z", true},
+		"Multiple":   {":Z,ro,noexec", true},
+	}
+
 	for name, p := range scenarios {
 		param := p
 		t.Run(name, func(t *testing.T) { bindMountHelper(t, param.option, param.expectedPass) })
