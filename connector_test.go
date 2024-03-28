@@ -8,7 +8,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -118,11 +117,25 @@ var volumeConfig = `
 `
 
 func bindMountHelper(t *testing.T, options string) {
-	t.Helper()
 	fileContent, err := os.ReadFile("./tests/volume/test_file.txt")
 	assert.NoError(t, err)
 
 	connector, _ := getConnector(t, fmt.Sprintf(volumeConfig, options))
+
+	if tests.IsRunningOnLinux() && options == "" {
+		// On Linux, when SELinux is enabled, then bind mounts without
+		// relabeling options will fail.  So, to test this case, disable
+		// SELinux on the test folder in order to make the file readable
+		// from within the container.
+		cmd := exec.Command("chcon", "-Rt", "svirt_sandbox_file_t", "./tests/volume")
+		var stderr bytes.Buffer
+		cmd.Stderr = &stderr
+		err = cmd.Run()
+		if err != nil {
+			t.Logf("chcon error: %s: %s", err.Error(), stderr.String())
+			t.Fail()
+		}
+	}
 
 	container, err := connector.Deploy(
 		context.Background(),
@@ -136,16 +149,21 @@ func bindMountHelper(t *testing.T, options string) {
 	// Note: If it ends up with length zero buffer, restarting the VM may help:
 	// https://stackoverflow.com/questions/71977532/podman-mount-host-volume-return-error-statfs-no-such-file-or-directory-in-ma
 	readBuffer := readOutputUntil(t, container, string(fileContent))
-	assert.GreaterThan(t, len(readBuffer), 0)
+	assert.Contains(t, string(readBuffer), string(fileContent))
 }
 
 func TestBindMount(t *testing.T) {
 	scenarios := map[string]string{
-		"No options": "",
-		"Private":    ":Z",
-		"Shared":     ":z",
 		"ReadOnly":   ":ro",
-		"Multiple":   ":z,ro,noexec",
+		"Multiple":   ":ro,noexec",
+		"No options": "",
+	}
+	//goland:noinspection GoBoolExpressions  // The linter cannot tell that this expression is not constant.
+	if tests.IsRunningOnLinux() {
+		// The SELinux options seem to cause problems on Mac OS X, so only test
+		// them on Linux.
+		scenarios["Private"] = ":Z"
+		scenarios["Shared"] = ":z"
 	}
 	for name, s := range scenarios {
 		options := s
@@ -306,9 +324,8 @@ func TestPrivateCgroupNs(t *testing.T) {
 
 func TestHostCgroupNs(t *testing.T) {
 	//goland:noinspection GoBoolExpressions  // The linter cannot tell that this expression is not constant.
-	if runtime.GOOS != "linux" {
+	if !tests.IsRunningOnLinux() {
 		t.Skipf("Not running on Linux. Skipping cgroup test.")
-		return
 	}
 	logger := log.NewTestLogger(t)
 
