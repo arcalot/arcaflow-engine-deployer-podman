@@ -178,8 +178,10 @@ func TestBindMountNonLinux(t *testing.T) {
 }
 
 func TestBindMountNonSELinux(t *testing.T) {
-	if !tests.IsRunningOnLinux() || selinux.GetEnabled() {
-		t.Skip("Not running on Linux with SELinux disabled; skipping.")
+	if selinux.GetEnabled() {
+		t.Skip("SELinux is enabled; skipping.")
+	} else if !tests.IsRunningOnLinux() {
+		t.Skip("Not running on Linux; skipping.")
 	}
 
 	scenarios := map[string]*bindMountParam{
