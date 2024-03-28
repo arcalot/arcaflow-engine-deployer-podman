@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/opencontainers/selinux/go-selinux"
 	"go.arcalot.io/assert"
 	log "go.arcalot.io/log/v2"
 	"go.flow.arcalot.io/deployer"
@@ -116,25 +117,16 @@ var volumeConfig = `
 }
 `
 
-func bindMountHelper(t *testing.T, options string) {
+func bindMountHelper(t *testing.T, options string, expectedPass bool) {
 	fileContent, err := os.ReadFile("./tests/volume/test_file.txt")
 	assert.NoError(t, err)
 
 	connector, _ := getConnector(t, fmt.Sprintf(volumeConfig, options))
 
-	if tests.IsRunningOnLinux() && options == "" {
-		// On Linux, when SELinux is enabled, then bind mounts without
-		// relabeling options will fail.  So, to test this case, disable
-		// SELinux on the test folder in order to make the file readable
-		// from within the container.
-		cmd := exec.Command("chcon", "-Rt", "svirt_sandbox_file_t", "./tests/volume")
-		var stderr bytes.Buffer
-		cmd.Stderr = &stderr
-		err = cmd.Run()
-		if err != nil {
-			t.Logf("chcon error: %s: %s", err.Error(), stderr.String())
-			t.Fail()
-		}
+	if tests.IsRunningOnLinux() && options == "" && selinux.GetEnabled() {
+		// On Linux, bind mounts without relabeling options will fail when
+		// SELinux is enabled.  So, reset expectations appropriately.
+		expectedPass = false
 	}
 
 	container, err := connector.Deploy(
@@ -149,25 +141,28 @@ func bindMountHelper(t *testing.T, options string) {
 	// Note: If it ends up with length zero buffer, restarting the VM may help:
 	// https://stackoverflow.com/questions/71977532/podman-mount-host-volume-return-error-statfs-no-such-file-or-directory-in-ma
 	readBuffer := readOutputUntil(t, container, string(fileContent))
-	assert.Contains(t, string(readBuffer), string(fileContent))
+	assert.Equals(t, strings.Contains(string(readBuffer), string(fileContent)), expectedPass)
 }
 
 func TestBindMount(t *testing.T) {
-	scenarios := map[string]string{
-		"ReadOnly":   ":ro",
-		"Multiple":   ":ro,noexec",
-		"No options": "",
+	type param struct {
+		option       string
+		expectedPass bool
 	}
-	//goland:noinspection GoBoolExpressions  // The linter cannot tell that this expression is not constant.
+	scenarios := map[string]param{
+		"ReadOnly":   param{":ro", true},
+		"Multiple":   param{":ro,noexec", true},
+		"No options": param{"", true},
+	}
 	if tests.IsRunningOnLinux() {
 		// The SELinux options seem to cause problems on Mac OS X, so only test
 		// them on Linux.
-		scenarios["Private"] = ":Z"
-		scenarios["Shared"] = ":z"
+		scenarios["Private"] = param{":Z", true}
+		scenarios["Shared"] = param{":z", true}
 	}
-	for name, s := range scenarios {
-		options := s
-		t.Run(name, func(t *testing.T) { bindMountHelper(t, options) })
+	for name, p := range scenarios {
+		param := p
+		t.Run(name, func(t *testing.T) { bindMountHelper(t, param.option, param.expectedPass) })
 	}
 }
 
@@ -323,7 +318,6 @@ func TestPrivateCgroupNs(t *testing.T) {
 }
 
 func TestHostCgroupNs(t *testing.T) {
-	//goland:noinspection GoBoolExpressions  // The linter cannot tell that this expression is not constant.
 	if !tests.IsRunningOnLinux() {
 		t.Skipf("Not running on Linux. Skipping cgroup test.")
 	}
