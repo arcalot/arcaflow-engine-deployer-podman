@@ -141,16 +141,23 @@ func bindMountHelper(t *testing.T, options string, expectedPass bool) {
 	// Tell the plugin to output the contents of the mapped file.
 	assert.NoErrorR[int](t)(container.Write([]byte("volume\n")))
 
-	// Note: If it ends up with length zero buffer, restarting the VM may help:
+	// Note: If the read returns a zero-length buffer, restarting the VM may help:
 	// https://stackoverflow.com/questions/71977532/podman-mount-host-volume-return-error-statfs-no-such-file-or-directory-in-ma
 	readBuffer := readOutputUntil(t, container, fileContent)
 	if expectedPass {
 		assert.Contains(t, string(readBuffer), fileContent)
 	} else {
-		// If this assertion fails, then we actually found what we were looking
-		// for (despite our hopes to the contrary), so having the failure
-		// message include the strings probably isn't important, and so we can
-		// get by without an `assert.NotContains()` function.
+		// We expect this test to fail, meaning we don't expect the plugin to
+		// manage to return the contents of the file (although, it normally
+		// -will- return the command prompt and some whitespace).  If it -does-
+		// return the contents, then the assertion will fail (and we'll all be
+		// surprised).  (Mostly, this branch is here to account for the cases
+		// which we know people might try but which we know won't work.)
+		//
+		// Note that this is a weak test:  if the plugin fails to return the
+		// contents of the file for reasons unrelated to the bind mount (such
+		// as the read failure mentioned above), this test will not detect the
+		// issue, and we'll get what is arguably a "false pass".
 		assert.Equals(t, strings.Contains(string(readBuffer), fileContent), false)
 	}
 }
