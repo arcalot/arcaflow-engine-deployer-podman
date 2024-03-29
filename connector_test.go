@@ -5,12 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/opencontainers/selinux/go-selinux"
 	"io"
 	"os"
 	"os/exec"
-	"runtime"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -56,6 +55,8 @@ func TestSimpleInOut(t *testing.T) {
 		"quay.io/arcalot/podman-deployer-test-helper:0.1.0")
 	assert.NoError(t, err)
 
+	t.Cleanup(func() { assert.NoError(t, plugin.Close()) })
+
 	var containerInput = []byte("ping abc\n")
 	assert.NoErrorR[int](t)(plugin.Write(containerInput))
 
@@ -69,10 +70,6 @@ func TestSimpleInOut(t *testing.T) {
 	readBuffer = readOutputUntil(t, plugin, endStr)
 	// assert output is not empty
 	assert.Equals(t, len(readBuffer) > 0, true)
-
-	t.Cleanup(func() {
-		assert.NoError(t, plugin.Close())
-	})
 }
 
 var envConfig = `
@@ -97,15 +94,12 @@ func TestEnv(t *testing.T) {
 	container, err := connector.Deploy(context.Background(), "quay.io/arcalot/podman-deployer-test-helper:0.1.0")
 	assert.NoError(t, err)
 
-	var containerInput = []byte("env\n")
-	assert.NoErrorR[int](t)(container.Write(containerInput))
+	t.Cleanup(func() { assert.NoError(t, container.Close()) })
+
+	assert.NoErrorR[int](t)(container.Write([]byte("env\n")))
 
 	readBuffer := readOutputUntil(t, container, envVars)
 	assert.GreaterThan(t, len(readBuffer), 0)
-
-	t.Cleanup(func() {
-		assert.NoError(t, container.Close())
-	})
 }
 
 var volumeConfig = `
@@ -113,7 +107,7 @@ var volumeConfig = `
    "deployment":{
       "host":{
          "Binds":[
-            "./tests/volume:/test"
+            "%s:/test/test_file.txt%s"
          ]
       }
    },
@@ -123,37 +117,111 @@ var volumeConfig = `
 }
 `
 
-func TestSimpleVolume(t *testing.T) {
-	logger := log.NewTestLogger(t)
-	fileContent, err := os.ReadFile("./tests/volume/test_file.txt")
-	assert.NoError(t, err)
+// bindMountHelper is a helper function which tests plugins with a file
+// bind-mounted inside the container.  Options for the mount and the expected
+// outcome of the test are provided by parameters.  The test creates a
+// temporary file containing appropriate content, configures that file to be
+// mounted inside the container, and then starts the plugin; the test then
+// tells the plugin to output the contents of the mapped file and checks it
+// against the value originally written to the file.
+func bindMountHelper(t *testing.T, options string, expectedPass bool) {
+	fileContent := fmt.Sprintf("bind mount test with option %q\n", options)
+	mountFile := assert.NoErrorR[*os.File](t)(os.CreateTemp("", "bind_mount_test_*.txt"))
+	t.Cleanup(func() { assert.NoError(t, os.Remove(mountFile.Name())) })
+	assert.NoErrorR[int](t)(mountFile.WriteString(fileContent))
+	assert.NoError(t, mountFile.Close())
+	connector, _ := getConnector(t, fmt.Sprintf(volumeConfig, mountFile.Name(), options))
 
-	connector, _ := getConnector(t, volumeConfig)
-	cwd, err := os.Getwd()
-	assert.NoError(t, err)
-	// disable selinux on the test folder in order to make the file readable from within the container
-	cmd := exec.Command("chcon", "-Rt", "svirt_sandbox_file_t", fmt.Sprintf("%s/tests/volume", cwd)) //nolint:gosec
-	err = cmd.Run()
-	if err != nil {
-		logger.Warningf("failed to set SELinux permissions on folder, chcon error: %s, this may cause test failure if SELinux is enabled.", err.Error())
+	// Run the plugin
+	container := assert.NoErrorR[deployer.Plugin](t)(connector.Deploy(
+		context.Background(),
+		"quay.io/arcalot/podman-deployer-test-helper:0.1.0"))
+	t.Cleanup(func() { assert.NoError(t, container.Close()) })
+
+	// Tell the plugin to output the contents of the mapped file.
+	assert.NoErrorR[int](t)(container.Write([]byte("volume\n")))
+
+	// Note: If the read returns a zero-length buffer, restarting the VM may help:
+	// https://stackoverflow.com/questions/71977532/podman-mount-host-volume-return-error-statfs-no-such-file-or-directory-in-ma
+	readBuffer := readOutputUntil(t, container, fileContent)
+	if expectedPass {
+		assert.Contains(t, string(readBuffer), fileContent)
+	} else {
+		// We expect this test to fail, meaning we don't expect the plugin to
+		// manage to return the contents of the file (although, it normally
+		// -will- return the command prompt and some whitespace).  If it -does-
+		// return the contents, then the assertion will fail (and we'll all be
+		// surprised).  (Mostly, this branch is here to account for the cases
+		// which we know people might try but which we know won't work.)
+		//
+		// Note that this is a weak test:  if the plugin fails to return the
+		// contents of the file for reasons unrelated to the bind mount (such
+		// as the read failure mentioned above), this test will not detect the
+		// issue, and we'll get what is arguably a "false pass".
+		assert.Equals(t, strings.Contains(string(readBuffer), fileContent), false)
+	}
+}
+
+type bindMountParam struct {
+	option       string
+	expectedPass bool
+}
+
+func TestBindMountNonLinux(t *testing.T) {
+	if tests.IsRunningOnLinux() {
+		t.Skip("Running on Linux; skipping.")
 	}
 
-	container, err := connector.Deploy(
-		context.Background(),
-		"quay.io/arcalot/podman-deployer-test-helper:0.1.0")
-	assert.NoError(t, err)
+	scenarios := map[string]*bindMountParam{
+		"No options": {"", true},
+		"ReadOnly":   {":ro", true},
+		"Multiple":   {":ro,noexec", true},
+	}
 
-	var containerInput = []byte("volume\n")
-	_, err = container.Write(containerInput)
-	assert.NoError(t, err)
-	// Note: If it ends up with length zero buffer, restarting the VM may help:
-	// https://stackoverflow.com/questions/71977532/podman-mount-host-volume-return-error-statfs-no-such-file-or-directory-in-ma
-	readBuffer := readOutputUntil(t, container, string(fileContent))
-	assert.GreaterThan(t, len(readBuffer), 0)
+	for name, p := range scenarios {
+		param := p
+		t.Run(name, func(t *testing.T) { bindMountHelper(t, param.option, param.expectedPass) })
+	}
+}
 
-	t.Cleanup(func() {
-		assert.NoError(t, container.Close())
-	})
+func TestBindMountNonSELinux(t *testing.T) {
+	if selinux.GetEnabled() {
+		t.Skip("SELinux is enabled; skipping.")
+	} else if !tests.IsRunningOnLinux() {
+		t.Skip("Not running on Linux; skipping.")
+	}
+
+	scenarios := map[string]*bindMountParam{
+		"No options": {"", true},
+		"ReadOnly":   {":ro", true},
+		"Private":    {":Z", true},
+		"Shared":     {":z", true},
+		"Multiple":   {":ro,noexec", true},
+	}
+
+	for name, p := range scenarios {
+		param := p
+		t.Run(name, func(t *testing.T) { bindMountHelper(t, param.option, param.expectedPass) })
+	}
+}
+
+func TestBindMountSELinux(t *testing.T) {
+	if !selinux.GetEnabled() {
+		t.Skip("SELinux is not enabled; skipping.")
+	}
+
+	scenarios := map[string]*bindMountParam{
+		"No options": {"", false},
+		"ReadOnly":   {":ro", false},
+		"Private":    {":Z", true},
+		"Shared":     {":z", true},
+		"Multiple":   {":Z,ro,noexec", true},
+	}
+
+	for name, p := range scenarios {
+		param := p
+		t.Run(name, func(t *testing.T) { bindMountHelper(t, param.option, param.expectedPass) })
+	}
 }
 
 var nameTemplate = `
@@ -179,34 +247,32 @@ func TestContainerName(t *testing.T) {
 		"quay.io/arcalot/podman-deployer-test-helper:0.1.0")
 	assert.NoError(t, err)
 
+	t.Cleanup(func() { assert.NoError(t, container1.Close()) })
+
 	container2, err := connector2.Deploy(
 		ctx,
 		"quay.io/arcalot/podman-deployer-test-helper:0.1.0")
 	assert.NoError(t, err)
 
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		var containerInput = []byte("sleep 3\n")
-		assert.NoErrorR[int](t)(container1.Write(containerInput))
-		assert.NoErrorR[int](t)(container2.Write(containerInput))
-	}()
-
-	time.Sleep(1 * time.Second)
-	assert.Equals(t, tests.IsContainerRunning(logger, cfg1.Podman.Path, container1.ID()), true)
-
-	time.Sleep(1 * time.Second)
-	assert.Equals(t, tests.IsContainerRunning(logger, cfg2.Podman.Path, container2.ID()), true)
-
-	wg.Wait()
+	t.Cleanup(func() { assert.NoError(t, container2.Close()) })
 
 	assert.Equals(t, container1.ID() != container2.ID(), true)
 
-	t.Cleanup(func() {
-		assert.NoError(t, container1.Close())
-		assert.NoError(t, container2.Close())
-	})
+	containerInput := []byte("sleep 3\n")
+	assert.NoErrorR[int](t)(container1.Write(containerInput))
+	assert.NoErrorR[int](t)(container2.Write(containerInput))
+
+	// Wait for each of the containers to start running; arbitrarily fail the
+	// test if it doesn't all happen within 30 seconds.
+	end := time.Now().Add(30 * time.Second)
+	for !tests.IsContainerRunning(logger, cfg1.Podman.Path, container1.ID()) {
+		assert.Equals(t, time.Now().Before(end), true)
+		time.Sleep(1 * time.Second)
+	}
+	for !tests.IsContainerRunning(logger, cfg2.Podman.Path, container2.ID()) {
+		assert.Equals(t, time.Now().Before(end), true)
+		time.Sleep(1 * time.Second)
+	}
 }
 
 var cgroupTemplate = `
@@ -238,6 +304,8 @@ func TestCgroupNsByContainerName(t *testing.T) {
 		"quay.io/arcalot/podman-deployer-test-helper:0.1.0")
 	assert.NoError(t, err)
 
+	t.Cleanup(func() { assert.NoError(t, container1.Close()) })
+
 	containerNamePrefix2 := "test_2"
 	// The second one will join the newly created private namespace of the first container
 	configtemplate2 := fmt.Sprintf(cgroupTemplate, containerNamePrefix2, fmt.Sprintf("container:%s", container1.ID()))
@@ -247,46 +315,42 @@ func TestCgroupNsByContainerName(t *testing.T) {
 		"quay.io/arcalot/podman-deployer-test-helper:0.1.0")
 	assert.NoError(t, err)
 
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		var containerInput = []byte("sleep 7\n")
-		_, err := container1.Write(containerInput)
-		assert.NoError(t, err)
-	}()
-	// sleeps to wait the first container become ready and attach to its cgroup ns
-	time.Sleep(3 * time.Second)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		var containerInput = []byte("sleep 5\n")
-		_, err := container2.Write(containerInput)
-		assert.NoError(t, err)
-	}()
-	ns1 := tests.GetPodmanPsNsWithFormat(logger, config.Podman.Path, container1.ID(), "{{.CGROUPNS}}")
-	ns2 := tests.GetPodmanPsNsWithFormat(logger, config.Podman.Path, container2.ID(), "{{.CGROUPNS}}")
-	assert.Equals(t, ns1 == ns2, true)
-	wg.Wait()
+	t.Cleanup(func() { assert.NoError(t, container2.Close()) })
 
-	t.Cleanup(func() {
-		assert.NoError(t, container1.Close())
-		assert.NoError(t, container2.Close())
-	})
+	assert.NoErrorR[int](t)(container1.Write([]byte("sleep 7\n")))
+
+	// Wait for each of the containers to start running so that we can collect
+	// their cgroup names; arbitrarily fail the test if it doesn't all happen
+	// within 30 seconds.
+	end := time.Now().Add(30 * time.Second)
+	var ns1, ns2 string
+	for ns1 == "" {
+		ns1 = tests.GetPodmanPsNsWithFormat(logger, config.Podman.Path, container1.ID(), "{{.CGROUPNS}}")
+		assert.Equals(t, time.Now().Before(end), true)
+		time.Sleep(1 * time.Second)
+	}
+	for ns2 == "" {
+		ns2 = tests.GetPodmanPsNsWithFormat(logger, config.Podman.Path, container2.ID(), "{{.CGROUPNS}}")
+		assert.Equals(t, time.Now().Before(end), true)
+		time.Sleep(1 * time.Second)
+	}
+	assert.Equals(t, ns1 == ns2, true)
+
+	// Release the second container from its input prompt via a no-op command.
+	assert.NoErrorR[int](t)(container2.Write([]byte(":\n")))
 }
 
 func TestPrivateCgroupNs(t *testing.T) {
 	// get the user cgroup ns
 	logger := log.NewTestLogger(t)
 
-	var wg sync.WaitGroup
 	// Assume sleep is in the path. Because it's not in the same location for every user.
 	userCgroupNs := tests.GetCommmandCgroupNs(logger, "sleep", []string{"3"})
 	assert.NotNil(t, userCgroupNs)
 	logger.Debugf("Detected cgroup namespace for user: %s", userCgroupNs)
 
 	containerNamePrefix := "test"
-	// The first container will run with a private namespace that will be created at startup
+	// The container will run with a private namespace that will be created at startup
 	configtemplate := fmt.Sprintf(cgroupTemplate, containerNamePrefix, "private")
 	connector, config := getConnector(t, configtemplate)
 	container, err := connector.Deploy(
@@ -294,32 +358,28 @@ func TestPrivateCgroupNs(t *testing.T) {
 		"quay.io/arcalot/podman-deployer-test-helper:0.1.0")
 	assert.NoError(t, err)
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		var containerInput = []byte("sleep 5\n")
-		assert.NoErrorR[int](t)(container.Write(containerInput))
-	}()
+	t.Cleanup(func() { assert.NoError(t, container.Close()) })
 
-	time.Sleep(2 * time.Second)
+	assert.NoErrorR[int](t)(container.Write([]byte("sleep 5\n")))
 
-	var podmanCgroupNs = tests.GetPodmanCgroupNs(logger, config.Podman.Path, container.ID())
-	wg.Wait()
-
+	// Wait for the container to start running so that we can collect its
+	// cgroup name; arbitrarily fail the test if it doesn't all happen within
+	// 30 seconds.
+	end := time.Now().Add(30 * time.Second)
+	var podmanCgroupNs string
+	for podmanCgroupNs == "" {
+		podmanCgroupNs = tests.GetPodmanCgroupNs(logger, config.Podman.Path, container.ID())
+		assert.Equals(t, time.Now().Before(end), true)
+		time.Sleep(1 * time.Second)
+	}
 	assert.Equals(t, userCgroupNs != podmanCgroupNs, true)
-
-	t.Cleanup(func() {
-		assert.NoError(t, container.Close())
-	})
 }
 
 func TestHostCgroupNs(t *testing.T) {
-	if runtime.GOOS != "linux" {
+	if !tests.IsRunningOnLinux() {
 		t.Skipf("Not running on Linux. Skipping cgroup test.")
-		return
 	}
 	logger := log.NewTestLogger(t)
-	var wg sync.WaitGroup
 
 	// Assume sleep is in the path. Because it's not in the same location for every user.
 	userCgroupNs := tests.GetCommmandCgroupNs(logger, "sleep", []string{"3"})
@@ -335,25 +395,21 @@ func TestHostCgroupNs(t *testing.T) {
 		"quay.io/arcalot/podman-deployer-test-helper:0.1.0")
 	assert.NoError(t, err)
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		var containerInput = []byte("sleep 5\n")
-		assert.NoErrorR[int](t)(container.Write(containerInput))
-	}()
-	wg.Wait()
-	// waits for the container to become ready
-	time.Sleep(2 * time.Second)
+	t.Cleanup(func() { assert.NoError(t, container.Close()) })
 
-	var podmanCgroupNs = tests.GetPodmanCgroupNs(logger, config.Podman.Path, container.ID())
-	assert.NotNil(t, podmanCgroupNs)
-	wg.Wait()
+	assert.NoErrorR[int](t)(container.Write([]byte("sleep 5\n")))
 
+	// Wait for the container to start running so that we can collect its
+	// cgroup name; arbitrarily fail the test if it doesn't all happen within
+	// 30 seconds.
+	end := time.Now().Add(30 * time.Second)
+	var podmanCgroupNs string
+	for podmanCgroupNs == "" {
+		podmanCgroupNs = tests.GetPodmanCgroupNs(logger, config.Podman.Path, container.ID())
+		assert.Equals(t, time.Now().Before(end), true)
+		time.Sleep(1 * time.Second)
+	}
 	assert.Equals(t, userCgroupNs, podmanCgroupNs)
-
-	t.Cleanup(func() {
-		assert.NoError(t, container.Close())
-	})
 }
 
 func TestCgroupNsByNamespacePath(t *testing.T) {
@@ -368,16 +424,21 @@ func TestCgroupNsByNamespacePath(t *testing.T) {
 	container1, err := connector1.Deploy(context.Background(), "quay.io/arcalot/podman-deployer-test-helper:0.1.0")
 	assert.NoError(t, err)
 
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		var containerInput = []byte("sleep 10\n")
-		_, err := container1.Write(containerInput)
-		assert.NoError(t, err)
-	}()
-	// sleeps to wait the first container become ready and attach to its cgroup ns
-	time.Sleep(2 * time.Second)
+	t.Cleanup(func() { assert.NoError(t, container1.Close()) })
+
+	assert.NoErrorR[int](t)(container1.Write([]byte("sleep 10\n")))
+
+	// Wait for each of the containers to start running so that we can collect
+	// their cgroup names; arbitrarily fail the test if it doesn't all happen
+	// within 30 seconds.
+	end := time.Now().Add(30 * time.Second)
+	var ns1 string
+	for ns1 == "" {
+		ns1 = tests.GetPodmanPsNsWithFormat(logger, config.Podman.Path, container1.ID(), "{{.CGROUPNS}}")
+		assert.Equals(t, time.Now().Before(end), true)
+		time.Sleep(1 * time.Second)
+	}
+	assert.NotNil(t, ns1)
 
 	pid := tests.GetPodmanPsNsWithFormat(logger, config.Podman.Path, container1.ID(), "{{.Pid}}")
 
@@ -392,23 +453,17 @@ func TestCgroupNsByNamespacePath(t *testing.T) {
 		"quay.io/arcalot/podman-deployer-test-helper:0.1.0")
 	assert.NoError(t, err)
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		var containerInput = []byte("sleep 5\n")
-		_, err := container2.Write(containerInput)
-		assert.NoError(t, err)
-	}()
+	t.Cleanup(func() { assert.NoError(t, container2.Close()) })
 
-	ns1 := tests.GetPodmanPsNsWithFormat(logger, config.Podman.Path, container1.ID(), "{{.CGROUPNS}}")
-	ns2 := tests.GetPodmanPsNsWithFormat(logger, config.Podman.Path, container1.ID(), "{{.CGROUPNS}}")
+	assert.NoErrorR[int](t)(container2.Write([]byte("sleep 5\n")))
+
+	var ns2 string
+	for ns2 == "" {
+		ns2 = tests.GetPodmanPsNsWithFormat(logger, config.Podman.Path, container2.ID(), "{{.CGROUPNS}}")
+		assert.Equals(t, time.Now().Before(end), true)
+		time.Sleep(1 * time.Second)
+	}
 	assert.Equals(t, ns1 == ns2, true)
-	wg.Wait()
-
-	t.Cleanup(func() {
-		assert.NoError(t, container1.Close())
-		assert.NoError(t, container2.Close())
-	})
 }
 
 var networkTemplate = `
@@ -436,6 +491,8 @@ func TestNetworkHost(t *testing.T) {
 		"quay.io/arcalot/podman-deployer-test-helper:0.1.0")
 	assert.NoError(t, err)
 
+	t.Cleanup(func() { assert.NoError(t, plugin.Close()) })
+
 	var containerInput = []byte("network host\n")
 	// the test script will run "ifconfig" in the container
 	assert.NoErrorR[int](t)(plugin.Write(containerInput))
@@ -452,10 +509,6 @@ func TestNetworkHost(t *testing.T) {
 	readBuffer := readOutputUntil(t, plugin, ifconfigOutStr)
 	containerOutString := string(readBuffer)
 	assert.Contains(t, containerOutString, ifconfigOutStr)
-
-	t.Cleanup(func() {
-		assert.NoError(t, plugin.Close())
-	})
 }
 
 func TestNetworkBridge(t *testing.T) {
@@ -465,7 +518,7 @@ func TestNetworkBridge(t *testing.T) {
 	// network settings:
 	// ip 10.88.0.123
 	// mac 44:33:22:11:00:99
-	// then asks to the container to run an ifconfig (tests/test_script.sh, test_network())
+	// then asks the container to run an ifconfig (tests/test_script.sh, test_network())
 	// through ATP to check if the settings have been effectively accepted
 	if tests.IsRunningOnGithub() {
 		t.Skipf("bridge networking not supported on GitHub actions")
@@ -497,53 +550,36 @@ func TestClose(t *testing.T) {
 		"quay.io/arcalot/podman-deployer-test-helper:0.1.0")
 	assert.NoError(t, err)
 
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		var containerInput = []byte("sleep 10\n")
-		assert.NoErrorR[int](t)(container.Write(containerInput))
-	}()
+	assert.NoErrorR[int](t)(container.Write([]byte("sleep 10\n")))
 
 	time.Sleep(2 * time.Second)
 	err = container.Close()
 	assert.NoError(t, err)
 }
 
-// readOutputUntil helper function, reads from plugin (io.Reader) until finds lookforOutput
+// readOutputUntil is a helper function which reads from the provided io.Reader
+// until it receives the specified string or EOF; returns the bytes read.
 func readOutputUntil(t *testing.T, plugin io.Reader, lookForOutput string) []byte {
 	var n int
 	readBuffer := make([]byte, 10240)
-	for {
+	for !strings.Contains(string(readBuffer[:n]), lookForOutput) {
 		currentBuffer := make([]byte, 1024)
 		readBytes, err := plugin.Read(currentBuffer)
-		if err != nil {
-			if err != io.EOF {
-				t.Fatalf("error while reading stdout: %s", err.Error())
-			} else {
-				return readBuffer[:n]
-			}
-		}
 		copy(readBuffer[n:], currentBuffer[:readBytes])
 		n += readBytes
-		if strings.Contains(string(readBuffer[:n]), lookForOutput) {
-			return readBuffer[:n]
+
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			t.Fatalf("error while reading stdout: %s", err.Error())
 		}
 	}
-}
-
-func checkIfconfig(t *testing.T) string {
-	path, err := exec.LookPath("ifconfig")
-	if err != nil {
-		t.Fatalf("impossible to run test: %s , ifconfig not installed, skipping.", t.Name())
-	}
-	assert.NoError(t, err)
-	return path
+	return readBuffer[:n]
 }
 
 func testNetworking(t *testing.T, podmanNetworking string, containerTest string, expectedOutput *string, ip *string, mac *string) {
 	logger := log.NewTestLogger(t)
-	checkIfconfig(t)
+	assert.NoErrorR[string](t)(exec.LookPath("ifconfig"))
 
 	containerNamePrefix := "networking"
 	// The first container will run with the host namespace
@@ -554,11 +590,12 @@ func testNetworking(t *testing.T, podmanNetworking string, containerTest string,
 		"quay.io/arcalot/podman-deployer-test-helper:0.1.0")
 	assert.NoError(t, err)
 
+	t.Cleanup(func() { assert.NoError(t, plugin.Close()) })
+
 	var containerInput = []byte(containerTest)
 	// the test script will output a string containing the desired ip address and mac address
 	// filtered by the desired interface name
-	_, err = plugin.Write(containerInput)
-	assert.NoError(t, err)
+	assert.NoErrorR[int](t)(plugin.Write(containerInput))
 
 	var readBuffer []byte
 	if expectedOutput != nil {
@@ -580,8 +617,4 @@ func testNetworking(t *testing.T, podmanNetworking string, containerTest string,
 		assert.Contains(t, string(readBuffer), *ip)
 		assert.Contains(t, string(readBuffer), *mac)
 	}
-
-	t.Cleanup(func() {
-		assert.NoError(t, plugin.Close())
-	})
 }

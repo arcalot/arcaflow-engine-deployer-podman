@@ -8,8 +8,8 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"runtime"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -84,7 +84,7 @@ func GetCommmandCgroupNs(logger log.Logger, command string, args []string) strin
 	}
 	// parse output from command
 	stdoutStr := stdout.String()
-	regex := regexp.MustCompile(`.*cgroup:\[(\d+)\]`)
+	regex := regexp.MustCompile(`.*cgroup:\[(\d+)]`)
 	userCgroupNs = regex.ReplaceAllString(stdoutStr, "$1")
 	userCgroupNs = strings.TrimSuffix(userCgroupNs, "\n")
 
@@ -97,22 +97,16 @@ func GetCommmandCgroupNs(logger log.Logger, command string, args []string) strin
 
 // GetPodmanCgroupNs  detects the running container cgroup namespace
 func GetPodmanCgroupNs(logger log.Logger, podmanPath string, containerName string) string {
-	var wg sync.WaitGroup
-	wg.Add(1)
-	var podmanCgroupNs string
-	go func() {
-		defer wg.Done()
-		var stdout bytes.Buffer
-		cmd := exec.Command(podmanPath, "ps", "--ns", "--filter", fmt.Sprintf("name=%s", containerName), "--format", "{{.CGROUPNS}}") //nolint:gosec
-		cmd.Stdout = &stdout
-		if err := cmd.Run(); err != nil {
-			logger.Errorf(err.Error())
-		}
-		podmanCgroupNs = stdout.String()
-	}()
-	wg.Wait()
-	podmanCgroupNs = strings.TrimSuffix(podmanCgroupNs, "\n")
-	return podmanCgroupNs
+	var stdout bytes.Buffer
+	cmd := exec.Command( //nolint:gosec
+		podmanPath, "ps", "--ns", "--filter",
+		fmt.Sprintf("name=%s", containerName),
+		"--format", "{{.CGROUPNS}}")
+	cmd.Stdout = &stdout
+	if err := cmd.Run(); err != nil {
+		logger.Errorf(err.Error())
+	}
+	return strings.TrimSuffix(stdout.String(), "\n")
 }
 
 func IsContainerRunning(logger log.Logger, podmanPath string, containerName string) bool {
@@ -139,4 +133,9 @@ func GetPodmanPsNsWithFormat(logger log.Logger, podmanPath string, containerName
 func IsRunningOnGithub() bool {
 	githubEnv := os.Getenv("GITHUB_ACTION")
 	return githubEnv != ""
+}
+
+func IsRunningOnLinux() bool {
+	//goland:noinspection GoBoolExpressions  // The linter cannot tell that this expression is not constant.
+	return runtime.GOOS == "linux"
 }
