@@ -320,6 +320,16 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 				nil,
 				nil,
 			).Disable(notImplemented),
+			"Privileged": schema.NewPropertySchema(
+				schema.NewBoolSchema(),
+				schema.NewDisplayValue(schema.PointerTo("Privileged"), schema.PointerTo("Execute container process without any further \"security\" lockdown"), nil),
+				false,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+			),
 		},
 	),
 	schema.NewStructMappedObjectSchema[*nat.PortBinding](
