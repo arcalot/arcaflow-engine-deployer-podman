@@ -322,7 +322,7 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 			).Disable(notImplemented),
 			"Privileged": schema.NewPropertySchema(
 				schema.NewBoolSchema(),
-				schema.NewDisplayValue(schema.PointerTo("Privileged"), schema.PointerTo("Execute container process without any further \"security\" lockdown"), nil),
+				schema.NewDisplayValue(schema.PointerTo("Privileged"), schema.PointerTo("Execute container process without security features that isolate the container from the host"), nil),
 				false,
 				nil,
 				nil,
