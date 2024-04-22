@@ -6,6 +6,7 @@ type ArgsBuilder interface {
 	SetCgroupNs(cgroupNs string) ArgsBuilder
 	SetContainerName(name string) ArgsBuilder
 	SetNetworkMode(networkMode string) ArgsBuilder
+	SetPrivileged(privileged bool) ArgsBuilder
 }
 
 func NewBuilder(commandArgs *[]string) ArgsBuilder {
