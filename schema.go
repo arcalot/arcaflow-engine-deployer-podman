@@ -327,7 +327,7 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 				nil,
 				nil,
 				nil,
-				nil,
+				schema.PointerTo(util.JSONEncode(false)),
 				nil,
 			),
 		},
