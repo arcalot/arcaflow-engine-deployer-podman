@@ -46,3 +46,10 @@ func (a *argsBuilder) SetNetworkMode(networkMode string) ArgsBuilder {
 	}
 	return a
 }
+
+func (a *argsBuilder) SetPrivileged(privileged bool) ArgsBuilder {
+	if privileged {
+		*a.commandArgs = append(*a.commandArgs, "--privileged")
+	}
+	return a
+}
