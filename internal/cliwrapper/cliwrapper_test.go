@@ -15,7 +15,7 @@ func TestPodman_ImageExists(t *testing.T) {
 	logger := log.NewTestLogger(t)
 	tests.RemoveImage(logger, tests.TestImage)
 
-	podman := NewCliWrapper(tests.GetPodmanPath(), logger)
+	podman := NewCliWrapper(tests.GetPodmanPath(), logger, nil)
 
 	assert.NotNil(t, tests.GetPodmanPath())
 
@@ -52,7 +52,7 @@ func TestPodman_PullImage(t *testing.T) {
 	logger := log.NewTestLogger(t)
 	tests.RemoveImage(logger, tests.TestImageMultiPlatform)
 
-	podman := NewCliWrapper(tests.GetPodmanPath(), logger)
+	podman := NewCliWrapper(tests.GetPodmanPath(), logger, nil)
 	assert.NotNil(t, tests.GetPodmanPath())
 
 	// pull without platform

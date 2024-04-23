@@ -37,6 +37,8 @@ type Podman struct {
 	// The initial integer that is the starting point for a
 	// Random Number Generator's algorithm.
 	RngSeed int64 `json:"rngSeed"`
+	// Specify the --connection for podman
+	RuntimeContext *string `json:"runtimeContext"`
 }
 
 // Deployment contains the information about deploying the plugin.
@@ -45,6 +47,7 @@ type Deployment struct {
 	HostConfig      *container.HostConfig `json:"host"`
 	ImagePullPolicy ImagePullPolicy       `json:"imagePullPolicy"`
 	ImagePlatform   *string               `json:"imagePlatform"`
+	RuntimeContext  *string               `json:"runtimeContext"`
 }
 
 // Timeouts drive the timeouts for various interactions in relation to Docker.

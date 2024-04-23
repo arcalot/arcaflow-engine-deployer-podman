@@ -40,7 +40,11 @@ func (f factory) Create(config *Config, logger log.Logger) (deployer.Connector, 
 	if err != nil {
 		return &Connector{}, fmt.Errorf("podman binary check failed with error: %w", err)
 	}
-	podman := cliwrapper.NewCliWrapper(podmanPath, logger)
+	runtimeContext := ""
+	if config.Podman.RuntimeContext != nil {
+		runtimeContext = *config.Podman.RuntimeContext
+	}
+	podman := cliwrapper.NewCliWrapper(podmanPath, logger, runtimeContext)
 
 	var rngSeed int64
 	if config.Podman.RngSeed == 0 {

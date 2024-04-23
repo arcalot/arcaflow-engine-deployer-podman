@@ -15,12 +15,19 @@ import (
 type cliWrapper struct {
 	podmanFullPath string
 	logger         log.Logger
+	runtimeContext []string
 }
 
-func NewCliWrapper(fullPath string, logger log.Logger) CliWrapper {
+func NewCliWrapper(fullPath string, logger log.Logger, context string) CliWrapper {
+	// Prepand the podman argument
+	runtimeContext := []string{}
+	if context != "" {
+		runtimeContext = append([]string{"--connection"}, context)
+	}
 	return &cliWrapper{
 		podmanFullPath: fullPath,
 		logger:         logger,
+		runtimeContext: runtimeContext,
 	}
 }
 
@@ -34,7 +41,8 @@ func (p *cliWrapper) decorateImageName(image string) string {
 
 func (p *cliWrapper) ImageExists(image string) (*bool, error) {
 	image = p.decorateImageName(image)
-	cmd := exec.Command(p.podmanFullPath, "image", "ls", "--format", "{{.Repository}}:{{.Tag}}") //nolint:gosec
+	commandArgs := append(p.runtimeContext, "image", "ls", "--format", "{{.Repository}}:{{.Tag}}")
+	cmd := exec.Command(p.podmanFullPath, commandArgs...) //nolint:gosec
 	var out bytes.Buffer
 	var errOut bytes.Buffer
 	cmd.Stdout = &out
@@ -52,9 +60,9 @@ func (p *cliWrapper) ImageExists(image string) (*bool, error) {
 }
 
 func (p *cliWrapper) PullImage(image string, platform *string) error {
-	commandArgs := []string{"pull"}
+	commandArgs := append(p.runtimeContext, "pull")
 	if platform != nil {
-		commandArgs = append(commandArgs, []string{"--platform", *platform}...)
+		commandArgs = append(commandArgs, "--platform", *platform)
 	}
 	image = p.decorateImageName(image)
 	commandArgs = append(commandArgs, image)
@@ -74,6 +82,7 @@ func (p *cliWrapper) PullImage(image string, platform *string) error {
 
 func (p *cliWrapper) Deploy(image string, podmanArgs []string, containerArgs []string) (io.WriteCloser, io.ReadCloser, error) {
 	image = p.decorateImageName(image)
+	podmanArgs = append(p.runtimeContext, podmanArgs...)
 	podmanArgs = append(podmanArgs, image)
 	podmanArgs = append(podmanArgs, containerArgs...)
 	deployCommand := exec.Command(p.podmanFullPath, podmanArgs...) //nolint:gosec
@@ -93,7 +102,8 @@ func (p *cliWrapper) Deploy(image string, podmanArgs []string, containerArgs []s
 }
 
 func (p *cliWrapper) KillAndClean(containerName string) error {
-	cmdKill := exec.Command(p.podmanFullPath, "kill", containerName) //nolint:gosec
+	commandArgs := append(p.runtimeContext, "kill", containerName)
+	cmdKill := exec.Command(p.podmanFullPath, commandArgs...) //nolint:gosec
 	p.logger.Debugf("Killing with command %v", cmdKill.Args)
 	if err := cmdKill.Run(); err != nil {
 		p.logger.Warningf("failed to kill pod %s, probably the execution terminated earlier", containerName)
@@ -102,7 +112,8 @@ func (p *cliWrapper) KillAndClean(containerName string) error {
 	}
 
 	var cmdRmContainerStderr bytes.Buffer
-	cmdRmContainer := exec.Command(p.podmanFullPath, "rm", "--force", containerName) //nolint:gosec
+	commandArgs = append(p.runtimeContext, "rm", "--force", containerName)
+	cmdRmContainer := exec.Command(p.podmanFullPath, commandArgs...) //nolint:gosec
 	p.logger.Debugf("Removing container with command %v", cmdRmContainer.Args)
 	cmdRmContainer.Stderr = &cmdRmContainerStderr
 	if err := cmdRmContainer.Run(); err != nil {
