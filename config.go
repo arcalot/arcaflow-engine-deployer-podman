@@ -37,7 +37,7 @@ type Podman struct {
 	// The initial integer that is the starting point for a
 	// Random Number Generator's algorithm.
 	RngSeed int64 `json:"rngSeed"`
-	// Specify the --connection for podman
+	// Specify the optional --connection parameter for podman
 	RuntimeContext *string `json:"runtimeContext"`
 }
 

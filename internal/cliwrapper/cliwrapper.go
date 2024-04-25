@@ -19,15 +19,14 @@ type cliWrapper struct {
 }
 
 func NewCliWrapper(fullPath string, logger log.Logger, context string) CliWrapper {
-	// Prepand the podman argument
-	runtimeContext := []string{}
+	// Specify podman --connection string if provided
 	if context != "" {
-		runtimeContext = append([]string{"--connection"}, context)
+		context = "--connection=" + context
 	}
 	return &cliWrapper{
 		podmanFullPath: fullPath,
 		logger:         logger,
-		runtimeContext: runtimeContext,
+		runtimeContext: []string{context},
 	}
 }
 
