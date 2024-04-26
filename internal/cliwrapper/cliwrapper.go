@@ -39,18 +39,13 @@ func (p *cliWrapper) decorateImageName(image string) string {
 }
 
 func (p *cliWrapper) ImageExists(image string) (*bool, error) {
-	cmd := p.getPodmanCmd("image", "ls", "--format", "{{.Repository}}:{{.Tag}}")
-	var out bytes.Buffer
-	var errOut bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &errOut
-	p.logger.Debugf("Checking whether image exists with command %v", cmd.Args)
-	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf(
-			"error while determining if image exists. Stdout: '%s', Stderr: '%s', Cmd error: (%w)",
-			out.String(), errOut.String(), err)
+	outStr, err := p.runPodmanCmd(
+		"checking whether image exists",
+		"image", "ls", "--format", "{{.Repository}}:{{.Tag}}",
+	)
+	if err != nil {
+		return nil, err
 	}
-	outStr := out.String()
 	outSlice := strings.Split(outStr, "\n")
 	exists := util.SliceContains(outSlice, p.decorateImageName(image))
 	return &exists, nil
@@ -62,18 +57,8 @@ func (p *cliWrapper) PullImage(image string, platform *string) error {
 		commandArgs = append(commandArgs, "--platform", *platform)
 	}
 	commandArgs = append(commandArgs, p.decorateImageName(image))
-	cmd := p.getPodmanCmd(commandArgs...)
-	p.logger.Debugf("Pulling image with command %v", cmd.Args)
-	var out bytes.Buffer
-	var errOut bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &errOut
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf(
-			"error while pulling image. Stdout: '%s', Stderr: '%s', Cmd error: (%w)",
-			out.String(), errOut.String(), err)
-	}
-	return nil
+	_, err := p.runPodmanCmd("pulling image", commandArgs...)
+	return err
 }
 
 func (p *cliWrapper) Deploy(image string, podmanArgs []string, containerArgs []string) (io.WriteCloser, io.ReadCloser, error) {
@@ -104,12 +89,10 @@ func (p *cliWrapper) KillAndClean(containerName string) error {
 		p.logger.Warningf("successfully killed container %s", containerName)
 	}
 
-	var cmdRmContainerStderr bytes.Buffer
-	cmdRmContainer := p.getPodmanCmd("rm", "--force", containerName)
-	p.logger.Debugf("Removing container with command %v", cmdRmContainer.Args)
-	cmdRmContainer.Stderr = &cmdRmContainerStderr
-	if err := cmdRmContainer.Run(); err != nil {
-		p.logger.Errorf("failed to remove container %s: %s", containerName, cmdRmContainerStderr.String())
+	msg := "removing container " + containerName
+	_, err := p.runPodmanCmd(msg, "rm", "--force", containerName)
+	if err != nil {
+		p.logger.Errorf(err.Error())
 	} else {
 		p.logger.Infof("successfully removed container %s", containerName)
 	}
@@ -117,7 +100,26 @@ func (p *cliWrapper) KillAndClean(containerName string) error {
 }
 
 func (p *cliWrapper) getPodmanCmd(cmdArgs ...string) *exec.Cmd {
-	commandArgs := p.runtimeContext
+	var commandArgs []string
+	if len(p.runtimeContext) > 0 && p.runtimeContext[0] != "" {
+		commandArgs = append(commandArgs, p.runtimeContext...)
+	}
 	commandArgs = append(commandArgs, cmdArgs...)
 	return exec.Command(p.podmanFullPath, commandArgs...) //#nosec G204 -- command line is internally generated
+}
+
+func (p *cliWrapper) runPodmanCmd(msg string, cmdArgs ...string) (string, error) {
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+
+	cmd := p.getPodmanCmd(cmdArgs...)
+	cmd.Stdout = &out
+	cmd.Stderr = &errOut
+	p.logger.Debugf(msg+" with command %v", cmd.Args)
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf(
+			"error while %s. Stdout: '%s', Stderr: '%s', Cmd error: (%w)",
+			msg, strings.TrimSpace(out.String()), strings.TrimSpace(errOut.String()), err)
+	}
+	return out.String(), nil
 }
