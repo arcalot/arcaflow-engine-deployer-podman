@@ -24,7 +24,6 @@ func NewCliWrapper(fullPath string, logger log.Logger, connectionName string) Cl
 	if connectionName != "" {
 		connection = []string{"--connection=" + connectionName}
 	}
-	logger.Debugf("ConnectionName %v %v", connectionName, connection)
 
 	return &cliWrapper{
 		podmanFullPath: fullPath,
