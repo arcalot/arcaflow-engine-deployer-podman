@@ -3,6 +3,7 @@ package cliwrapper
 import (
 	"fmt"
 	"os/exec"
+	"runtime"
 	"testing"
 
 	log "go.arcalot.io/log/v2"
@@ -11,11 +12,11 @@ import (
 	"go.flow.arcalot.io/podmandeployer/tests"
 )
 
-func TestPodman_ImageExists(t *testing.T) {
+func Podman_ImageExists(t *testing.T, connectionName string) {
 	logger := log.NewTestLogger(t)
 	tests.RemoveImage(logger, tests.TestImage)
 
-	podman := NewCliWrapper(tests.GetPodmanPath(), logger, "")
+	podman := NewCliWrapper(tests.GetPodmanPath(), logger, connectionName)
 
 	assert.NotNil(t, tests.GetPodmanPath())
 
@@ -46,6 +47,54 @@ func TestPodman_ImageExists(t *testing.T) {
 
 	// cleanup
 	tests.RemoveImage(logger, tests.TestImage)
+}
+
+func TestPodman_ImageExists(t *testing.T) {
+	Podman_ImageExists(t, "")
+}
+
+func TestPodman_Remote_ImageExists(t *testing.T) {
+	var tmpPodmanSocketCmd *exec.Cmd
+
+	// Check if there is an existing connection of `podman-machine-default` since this is included when installing
+	// podman desktop for macOS.
+	connectionName := "podman-machine-default"
+	chkDefaultConnectionCmd := exec.Command(tests.GetPodmanPath(), "--connection", connectionName, "system", "info") //nolint:gosec
+	if err := chkDefaultConnectionCmd.Run(); err == nil {
+		Podman_ImageExists(t, connectionName)
+	} else if runtime.GOOS == "linux" {
+		// The podman-machine-default doesn't exist then for Linux, create a temporary socket
+
+		// Setup
+		connectionName = "arcaflow-engine-deployer-podman-test"
+		podmanSocketPath := "unix:///var/tmp/" + connectionName + ".sock"
+
+		tmpPodmanSocketCmd = exec.Command(tests.GetPodmanPath(), "system", "service", "--time=0", podmanSocketPath)
+		if err := tmpPodmanSocketCmd.Start(); err != nil {
+			t.Fatalf("Failed to create temporary podman socket")
+		}
+
+		addConnectionCmd := exec.Command(tests.GetPodmanPath(), "system", "connection", "add", connectionName, podmanSocketPath)
+		if err := addConnectionCmd.Run(); err != nil {
+			t.Fatalf("Failed to add connection: " + connectionName)
+		}
+
+		// Run test
+		Podman_ImageExists(t, connectionName)
+
+		// Clean up
+		if err := tmpPodmanSocketCmd.Process.Kill(); err != nil {
+			t.Fatalf("Failed to kill temporary socket")
+		}
+
+		delConnectionCmd := exec.Command(tests.GetPodmanPath(), "system", "connection", "remove", connectionName)
+		if err := delConnectionCmd.Run(); err != nil {
+			t.Fatalf("Failed to delete connection: " + connectionName)
+		}
+		// Unexpected setup, force user to add podman-machine-default
+	} else {
+		t.Fatalf("Unsupported configuration")
+	}
 }
 
 func TestPodman_PullImage(t *testing.T) {
