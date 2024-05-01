@@ -1,8 +1,9 @@
 package podman
 
 import (
-	"github.com/docker/docker/api/types/container"
 	"time"
+
+	"github.com/docker/docker/api/types/container"
 )
 
 type Config struct {
@@ -38,7 +39,7 @@ type Podman struct {
 	// Random Number Generator's algorithm.
 	RngSeed int64 `json:"rngSeed"`
 	// Specify the optional --connection parameter for podman
-	RuntimeContext *string `json:"runtimeContext"`
+	ConnectionName *string `json:"connectionName"`
 }
 
 // Deployment contains the information about deploying the plugin.
@@ -47,7 +48,7 @@ type Deployment struct {
 	HostConfig      *container.HostConfig `json:"host"`
 	ImagePullPolicy ImagePullPolicy       `json:"imagePullPolicy"`
 	ImagePlatform   *string               `json:"imagePlatform"`
-	RuntimeContext  *string               `json:"runtimeContext"`
+	ConnectionName  *string               `json:"connectionName"`
 }
 
 // Timeouts drive the timeouts for various interactions in relation to Docker.

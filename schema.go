@@ -86,9 +86,9 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 				nil,
 				nil,
 			),
-			"runtimeContext": schema.NewPropertySchema(
+			"connectionName": schema.NewPropertySchema(
 				schema.NewStringSchema(nil, nil, nil),
-				schema.NewDisplayValue(schema.PointerTo("Connection"), schema.PointerTo("Connection to use for remote podman"), nil),
+				schema.NewDisplayValue(schema.PointerTo("Connection"), schema.PointerTo("Connection name to use for remote podman"), nil),
 				false,
 				nil,
 				nil,

@@ -15,18 +15,21 @@ import (
 type cliWrapper struct {
 	podmanFullPath string
 	logger         log.Logger
-	runtimeContext []string
+	connectionName []string
 }
 
-func NewCliWrapper(fullPath string, logger log.Logger, context string) CliWrapper {
+func NewCliWrapper(fullPath string, logger log.Logger, connectionName string) CliWrapper {
 	// Specify podman --connection string if provided
-	if context != "" {
-		context = "--connection=" + context
+	connection := []string{}
+	if connectionName != "" {
+		connection = []string{"--connection=" + connectionName}
 	}
+	logger.Debugf("ConnectionName %v %v", connectionName, connection)
+
 	return &cliWrapper{
 		podmanFullPath: fullPath,
 		logger:         logger,
-		runtimeContext: []string{context},
+		connectionName: connection,
 	}
 }
 
@@ -101,9 +104,7 @@ func (p *cliWrapper) KillAndClean(containerName string) error {
 
 func (p *cliWrapper) getPodmanCmd(cmdArgs ...string) *exec.Cmd {
 	var commandArgs []string
-	if len(p.runtimeContext) > 0 && p.runtimeContext[0] != "" {
-		commandArgs = append(commandArgs, p.runtimeContext...)
-	}
+	commandArgs = append(commandArgs, p.connectionName...)
 	commandArgs = append(commandArgs, cmdArgs...)
 	return exec.Command(p.podmanFullPath, commandArgs...) //#nosec G204 -- command line is internally generated
 }
