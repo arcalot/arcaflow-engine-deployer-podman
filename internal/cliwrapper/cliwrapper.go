@@ -18,11 +18,11 @@ type cliWrapper struct {
 	connectionName []string
 }
 
-func NewCliWrapper(fullPath string, logger log.Logger, connectionName string) CliWrapper {
+func NewCliWrapper(fullPath string, logger log.Logger, connectionName *string) CliWrapper {
 	// Specify podman --connection string if provided
 	connection := []string{}
-	if connectionName != "" {
-		connection = []string{"--connection=" + connectionName}
+	if connectionName != nil {
+		connection = append(connection, "--connection="+*connectionName)
 	}
 
 	return &cliWrapper{
