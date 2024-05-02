@@ -2,6 +2,7 @@ package cliwrapper
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"runtime"
 	"testing"
@@ -77,10 +78,30 @@ func TestPodman_Remote_ImageExists(t *testing.T) {
 // createPodmanConnection creates a Podman API service process and configures
 // a Podman "connection" to allow it to be used for remote Podman invocations.
 func createPodmanConnection(t *testing.T) (connectionName string) {
-	// Setup
+	// Setup:  create a temporary directory with a random name, to avoid
+	// collisions with other concurrently-running tests; use the resulting
+	// path as the name of the Podman service connection and put the service
+	// socket in the directory.  Start a listener on that socket and configure
+	// a connection to it.  Declare cleanup functions which will remove the
+	// connection, kill the listener, and remove the temporary directory and
+	// socket.
 	t.Logf("Adding a local Podman API service and connection.")
-	connectionName = "arcaflow-engine-deployer-podman-test"
-	podmanSocketPath := "unix:///var/tmp/" + connectionName + ".sock"
+	sockDir, err := os.MkdirTemp("", "arcaflow-engine-deployer-podman-test-*")
+	if err != nil {
+		t.Fatalf("Unable to create socket directory: %q", err)
+	}
+
+	t.Cleanup(func() {
+		t.Logf("Removing socket directory, %q.", sockDir)
+		if err := os.RemoveAll(sockDir); err != nil {
+			t.Logf("Unable to remove socket directory, %q: %q", sockDir, err)
+		}
+	})
+
+	t.Logf("Local Podman API service connection is %q.", sockDir)
+
+	connectionName = sockDir
+	podmanSocketPath := "unix://" + sockDir + "/podman.sock"
 
 	podmanApiServiceCmd := exec.Command(tests.GetPodmanPath(), "system", "service", "--time=0", podmanSocketPath) //nolint:gosec  // Command line is trusted
 	if err := podmanApiServiceCmd.Start(); err != nil {
