@@ -7,7 +7,7 @@ type ArgsBuilder interface {
 	SetContainerName(name string) ArgsBuilder
 	SetNetworkMode(networkMode string) ArgsBuilder
 	SetPrivileged(privileged bool) ArgsBuilder
-	SetReadOnly(readOnly *bool) ArgsBuilder
+	SetReadOnlyRoot(readOnlyRootfs *bool) ArgsBuilder
 }
 
 func NewBuilder(commandArgs *[]string) ArgsBuilder {

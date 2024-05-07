@@ -340,10 +340,10 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 				schema.PointerTo(util.JSONEncode(false)),
 				nil,
 			),
-			"ReadOnly": schema.NewPropertySchema(
+			"ReadonlyRootfs": schema.NewPropertySchema(
 				schema.NewBoolSchema(),
-				schema.NewDisplayValue(schema.PointerTo("ReadOnly"), schema.PointerTo("Execute container process with or without a read only file system"), nil),
-				false,
+				schema.NewDisplayValue(schema.PointerTo("ReadonlyRootfs"), schema.PointerTo("Execute container process with or without a read only root file system"), nil),
+				nil,
 				nil,
 				nil,
 				nil,

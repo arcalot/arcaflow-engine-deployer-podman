@@ -55,9 +55,9 @@ func (a *argsBuilder) SetPrivileged(privileged bool) ArgsBuilder {
 	return a
 }
 
-func (a *argsBuilder) SetReadOnly(readOnly *bool) ArgsBuilder {
-	if readOnly != nil {
-		*a.commandArgs = append(*a.commandArgs, "--read-only=", strconv.FormatBool(*readOnly))
+func (a *argsBuilder) SetReadOnlyRoot(readOnlyRootfs *bool) ArgsBuilder {
+	if readOnlyRootfs != nil {
+		*a.commandArgs = append(*a.commandArgs, "--read-only="+strconv.FormatBool(*readOnlyRootfs))
 	}
 	return a
 }
