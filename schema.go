@@ -340,6 +340,16 @@ var Schema = schema.NewTypedScopeSchema[*Config](
 				schema.PointerTo(util.JSONEncode(false)),
 				nil,
 			),
+			"ReadOnly": schema.NewPropertySchema(
+				schema.NewBoolSchema(),
+				schema.NewDisplayValue(schema.PointerTo("ReadOnly"), schema.PointerTo("Execute container process with or without a read only file system"), nil),
+				false,
+				nil,
+				nil,
+				nil,
+				schema.PointerTo(util.JSONEncode(false)),
+				nil,
+			),
 		},
 	),
 	schema.NewStructMappedObjectSchema[*nat.PortBinding](
