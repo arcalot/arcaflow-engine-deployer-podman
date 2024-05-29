@@ -58,14 +58,14 @@ func TestSimpleInOut(t *testing.T) {
 	t.Cleanup(func() { assert.NoError(t, plugin.Close()) })
 
 	var containerInput = []byte("ping abc\n")
-	assert.NoErrorR[int](t)(plugin.Write(containerInput))
+	_ = assert.NoErrorR[int](t)(plugin.Write(containerInput))
 
 	readBuffer := readOutputUntil(t, plugin, pongStr)
 	// assert output is not empty
 	assert.Equals(t, len(readBuffer) > 0, true)
 
 	logger.Infof(string(readBuffer[:7]))
-	assert.NoErrorR[int](t)(plugin.Write(containerInput))
+	_ = assert.NoErrorR[int](t)(plugin.Write(containerInput))
 
 	readBuffer = readOutputUntil(t, plugin, endStr)
 	// assert output is not empty
@@ -96,7 +96,7 @@ func TestEnv(t *testing.T) {
 
 	t.Cleanup(func() { assert.NoError(t, container.Close()) })
 
-	assert.NoErrorR[int](t)(container.Write([]byte("env\n")))
+	_ = assert.NoErrorR[int](t)(container.Write([]byte("env\n")))
 
 	readBuffer := readOutputUntil(t, container, envVars)
 	assert.GreaterThan(t, len(readBuffer), 0)
