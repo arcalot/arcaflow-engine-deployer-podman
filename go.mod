@@ -22,5 +22,5 @@ require (
 require (
 	github.com/opencontainers/selinux v1.11.0
 	go.arcalot.io/log/v2 v2.1.0
-	go.flow.arcalot.io/pluginsdk v0.12.0
+	go.flow.arcalot.io/pluginsdk v0.12.1
 )
