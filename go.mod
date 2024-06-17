@@ -7,7 +7,7 @@ require (
 	github.com/docker/go-connections v0.5.0
 	go.arcalot.io/assert v1.8.0
 	go.arcalot.io/lang v1.1.0
-	go.flow.arcalot.io/deployer v0.6.0
+	go.flow.arcalot.io/deployer v0.6.1
 )
 
 require (
