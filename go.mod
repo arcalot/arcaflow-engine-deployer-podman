@@ -3,7 +3,7 @@ module go.flow.arcalot.io/podmandeployer
 go 1.21
 
 require (
-	github.com/docker/docker v27.1.0+incompatible
+	github.com/docker/docker v27.1.1+incompatible
 	github.com/docker/go-connections v0.5.0
 	go.arcalot.io/assert v1.8.0
 	go.arcalot.io/lang v1.1.0
@@ -23,5 +23,5 @@ require (
 require (
 	github.com/opencontainers/selinux v1.11.0
 	go.arcalot.io/log/v2 v2.2.0
-	go.flow.arcalot.io/pluginsdk v0.12.2
+	go.flow.arcalot.io/pluginsdk v0.12.3
 )
