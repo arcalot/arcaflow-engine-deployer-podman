@@ -86,9 +86,9 @@ func (p *cliWrapper) KillAndClean(containerName string) error {
 	cmdKill := p.getPodmanCmd("kill", containerName)
 	p.logger.Debugf("Killing with command %v", cmdKill.Args)
 	if err := cmdKill.Run(); err != nil {
-		p.logger.Warningf("failed to kill pod %s, probably the execution terminated earlier", containerName)
+		p.logger.Infof("failed to kill pod %s, probably the execution terminated earlier", containerName)
 	} else {
-		p.logger.Warningf("successfully killed container %s", containerName)
+		p.logger.Infof("successfully killed container %s", containerName)
 	}
 
 	msg := "removing container " + containerName
