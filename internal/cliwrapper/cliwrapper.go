@@ -53,6 +53,19 @@ func (p *cliWrapper) ImageExists(image string) (*bool, error) {
 	return &exists, nil
 }
 
+func (p *cliWrapper) ContainerExists(containerID string) (bool, error) {
+	outStr, err := p.runPodmanCmd(
+		"checking whether container exists",
+		"container", "ls", "--format", "{{.Names}}",
+	)
+	if err != nil {
+		return true, err
+	}
+	outSlice := strings.Split(outStr, "\n")
+	exists := util.SliceContains(outSlice, containerID)
+	return exists, nil
+}
+
 func (p *cliWrapper) PullImage(image string, platform *string) error {
 	commandArgs := []string{"pull"}
 	if platform != nil {
@@ -86,9 +99,9 @@ func (p *cliWrapper) KillAndClean(containerName string) error {
 	cmdKill := p.getPodmanCmd("kill", containerName)
 	p.logger.Debugf("Killing with command %v", cmdKill.Args)
 	if err := cmdKill.Run(); err != nil {
-		p.logger.Warningf("failed to kill pod %s, probably the execution terminated earlier", containerName)
+		p.logger.Warningf("failed to kill pod %s; it may have exited earlier", containerName)
 	} else {
-		p.logger.Warningf("successfully killed container %s", containerName)
+		p.logger.Debugf("successfully killed container %s", containerName)
 	}
 
 	msg := "removing container " + containerName
@@ -96,7 +109,7 @@ func (p *cliWrapper) KillAndClean(containerName string) error {
 	if err != nil {
 		p.logger.Errorf(err.Error())
 	} else {
-		p.logger.Infof("successfully removed container %s", containerName)
+		p.logger.Debugf("successfully removed container %s", containerName)
 	}
 	return nil
 }

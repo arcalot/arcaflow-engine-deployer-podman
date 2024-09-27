@@ -26,19 +26,28 @@ func (p *CliPlugin) Read(b []byte) (n int, err error) {
 }
 
 func (p *CliPlugin) Close() error {
-	if err := p.wrapper.KillAndClean(p.containerName); err != nil {
-		return err
+	containerExists, err := p.wrapper.ContainerExists(p.containerImage)
+	if err != nil {
+		p.logger.Warningf("error while checking if container exists (%s);"+
+			" killing container in case it still exists", err.Error())
+	} else if containerExists {
+		p.logger.Infof("container %s still exists; killing container", p.containerName)
+	}
+	if err != nil || containerExists {
+		if err := p.wrapper.KillAndClean(p.containerName); err != nil {
+			return err
+		}
 	}
 
 	if err := p.stdin.Close(); err != nil {
-		p.logger.Errorf("failed to close stdin pipe")
+		p.logger.Warningf("failed to close stdin pipe")
 	} else {
-		p.logger.Infof("stdin pipe successfully closed")
+		p.logger.Debugf("stdin pipe successfully closed")
 	}
 	if err := p.stdout.Close(); err != nil {
-		p.logger.Infof("failed to close stdout pipe")
+		p.logger.Warningf("failed to close stdout pipe")
 	} else {
-		p.logger.Infof("stdout pipe successfully closed")
+		p.logger.Debugf("stdout pipe successfully closed")
 	}
 	return nil
 }
