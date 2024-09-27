@@ -96,16 +96,15 @@ func (p *cliWrapper) Deploy(image string, podmanArgs []string, containerArgs []s
 }
 
 func (p *cliWrapper) KillAndClean(containerName string) error {
-	cmdKill := p.getPodmanCmd("kill", containerName)
-	p.logger.Debugf("Killing with command %v", cmdKill.Args)
-	if err := cmdKill.Run(); err != nil {
-		p.logger.Warningf("failed to kill pod %s; it may have exited earlier", containerName)
+	_, err := p.runPodmanCmd("killing container "+containerName, "kill", containerName)
+	if err != nil {
+		p.logger.Warningf("failed to kill pod %s (%s); it may have exited earlier", containerName, err.Error())
 	} else {
 		p.logger.Debugf("successfully killed container %s", containerName)
 	}
 
 	msg := "removing container " + containerName
-	_, err := p.runPodmanCmd(msg, "rm", "--force", containerName)
+	_, err = p.runPodmanCmd(msg, "rm", "--force", containerName)
 	if err != nil {
 		p.logger.Errorf(err.Error())
 	} else {
