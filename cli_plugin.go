@@ -1,6 +1,7 @@
 package podman
 
 import (
+	"fmt"
 	"io"
 
 	log "go.arcalot.io/log/v2"
@@ -26,18 +27,20 @@ func (p *CliPlugin) Read(b []byte) (n int, err error) {
 }
 
 func (p *CliPlugin) Close() error {
-	containerExists, err := p.wrapper.ContainerExists(p.containerImage)
+	containerExists, err := p.wrapper.ContainerRunning(p.containerImage)
 	if err != nil {
 		p.logger.Warningf("error while checking if container exists (%s);"+
 			" killing container in case it still exists", err.Error())
 	} else if containerExists {
 		p.logger.Infof("container %s still exists; killing container", p.containerName)
 	}
+	var killErr error
 	if err != nil || containerExists {
-		if err := p.wrapper.KillAndClean(p.containerName); err != nil {
-			return err
-		}
+		killErr = p.wrapper.Kill(p.containerName)
 	}
+
+	// Still clean up even if the kill fails.
+	cleanErr := p.wrapper.Clean(p.containerName)
 
 	if err := p.stdin.Close(); err != nil {
 		p.logger.Warningf("failed to close stdin pipe")
@@ -48,6 +51,13 @@ func (p *CliPlugin) Close() error {
 		p.logger.Warningf("failed to close stdout pipe")
 	} else {
 		p.logger.Debugf("stdout pipe successfully closed")
+	}
+	if killErr != nil && cleanErr != nil {
+		return fmt.Errorf("error while killing pod (%s) and cleaning up pod (%s)", killErr, cleanErr)
+	} else if killErr != nil {
+		return killErr
+	} else if cleanErr != nil {
+		return cleanErr
 	}
 	return nil
 }

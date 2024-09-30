@@ -53,9 +53,9 @@ func (p *cliWrapper) ImageExists(image string) (*bool, error) {
 	return &exists, nil
 }
 
-func (p *cliWrapper) ContainerExists(containerID string) (bool, error) {
+func (p *cliWrapper) ContainerRunning(containerID string) (bool, error) {
 	outStr, err := p.runPodmanCmd(
-		"checking whether container exists",
+		"checking whether container is running",
 		"container", "ls", "--format", "{{.Names}}",
 	)
 	if err != nil {
@@ -95,16 +95,19 @@ func (p *cliWrapper) Deploy(image string, podmanArgs []string, containerArgs []s
 	return stdin, stdout, nil
 }
 
-func (p *cliWrapper) KillAndClean(containerName string) error {
+func (p *cliWrapper) Kill(containerName string) error {
 	_, err := p.runPodmanCmd("killing container "+containerName, "kill", containerName)
 	if err != nil {
 		p.logger.Warningf("failed to kill pod %s (%s); it may have exited earlier", containerName, err.Error())
 	} else {
 		p.logger.Debugf("successfully killed container %s", containerName)
 	}
+	return nil
+}
 
+func (p *cliWrapper) Clean(containerName string) error {
 	msg := "removing container " + containerName
-	_, err = p.runPodmanCmd(msg, "rm", "--force", containerName)
+	_, err := p.runPodmanCmd(msg, "rm", "--force", containerName)
 	if err != nil {
 		p.logger.Errorf(err.Error())
 	} else {
