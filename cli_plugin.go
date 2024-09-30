@@ -27,15 +27,15 @@ func (p *CliPlugin) Read(b []byte) (n int, err error) {
 }
 
 func (p *CliPlugin) Close() error {
-	containerExists, err := p.wrapper.ContainerRunning(p.containerImage)
+	containerRunning, err := p.wrapper.ContainerRunning(p.containerImage)
 	if err != nil {
 		p.logger.Warningf("error while checking if container exists (%s);"+
 			" killing container in case it still exists", err.Error())
-	} else if containerExists {
+	} else if containerRunning {
 		p.logger.Infof("container %s still exists; killing container", p.containerName)
 	}
 	var killErr error
-	if err != nil || containerExists {
+	if err != nil || containerRunning {
 		killErr = p.wrapper.Kill(p.containerName)
 	}
 
@@ -52,11 +52,12 @@ func (p *CliPlugin) Close() error {
 	} else {
 		p.logger.Debugf("stdout pipe successfully closed")
 	}
-	if killErr != nil && cleanErr != nil {
-		return fmt.Errorf("error while killing pod (%s) and cleaning up pod (%s)", killErr, cleanErr)
-	} else if killErr != nil {
+	switch {
+	case killErr != nil && cleanErr != nil:
+		return fmt.Errorf("error while killing pod (%s) and cleaning up pod (%s)", killErr.Error(), cleanErr.Error())
+	case killErr != nil:
 		return killErr
-	} else if cleanErr != nil {
+	case cleanErr != nil:
 		return cleanErr
 	}
 	return nil
