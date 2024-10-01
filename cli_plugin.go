@@ -1,6 +1,7 @@
 package podman
 
 import (
+	"fmt"
 	"io"
 
 	log "go.arcalot.io/log/v2"
@@ -26,19 +27,39 @@ func (p *CliPlugin) Read(b []byte) (n int, err error) {
 }
 
 func (p *CliPlugin) Close() error {
-	if err := p.wrapper.KillAndClean(p.containerName); err != nil {
-		return err
+	containerRunning, err := p.wrapper.ContainerRunning(p.containerImage)
+	if err != nil {
+		p.logger.Warningf("error while checking if container exists (%s);"+
+			" killing container in case it still exists", err.Error())
+	} else if containerRunning {
+		p.logger.Infof("container %s still exists; killing container", p.containerName)
+	}
+	var killErr error
+	if err != nil || containerRunning {
+		killErr = p.wrapper.Kill(p.containerName)
 	}
 
+	// Still clean up even if the kill fails. Clean() uses the --force parameter, so that
+	// will be another attempt at killing the container.
+	cleanErr := p.wrapper.Clean(p.containerName)
+
 	if err := p.stdin.Close(); err != nil {
-		p.logger.Errorf("failed to close stdin pipe")
+		p.logger.Warningf("failed to close stdin pipe")
 	} else {
-		p.logger.Infof("stdin pipe successfully closed")
+		p.logger.Debugf("stdin pipe successfully closed")
 	}
 	if err := p.stdout.Close(); err != nil {
-		p.logger.Infof("failed to close stdout pipe")
+		p.logger.Warningf("failed to close stdout pipe")
 	} else {
-		p.logger.Infof("stdout pipe successfully closed")
+		p.logger.Debugf("stdout pipe successfully closed")
+	}
+	switch {
+	case killErr != nil && cleanErr != nil:
+		return fmt.Errorf("error while killing container (%s) and cleaning up container (%s)", killErr.Error(), cleanErr.Error())
+	case killErr != nil:
+		return killErr
+	case cleanErr != nil:
+		return cleanErr
 	}
 	return nil
 }
