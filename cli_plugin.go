@@ -54,7 +54,7 @@ func (p *CliPlugin) Close() error {
 	}
 	switch {
 	case killErr != nil && cleanErr != nil:
-		return fmt.Errorf("error while killing pod (%s) and cleaning up pod (%s)", killErr.Error(), cleanErr.Error())
+		return fmt.Errorf("error while killing container (%s) and cleaning up container (%s)", killErr.Error(), cleanErr.Error())
 	case killErr != nil:
 		return killErr
 	case cleanErr != nil:
