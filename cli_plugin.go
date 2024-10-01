@@ -39,7 +39,8 @@ func (p *CliPlugin) Close() error {
 		killErr = p.wrapper.Kill(p.containerName)
 	}
 
-	// Still clean up even if the kill fails.
+	// Still clean up even if the kill fails. Clean() uses the --force parameter, so that
+	// will be another attempt at killing the container.
 	cleanErr := p.wrapper.Clean(p.containerName)
 
 	if err := p.stdin.Close(); err != nil {
