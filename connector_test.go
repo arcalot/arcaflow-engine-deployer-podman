@@ -620,10 +620,11 @@ func testNetworking(
 
 	if expectedOutput != nil {
 		assert.Contains(t, string(readBuffer), *expectedOutput)
-	} else if ip != nil && mac != nil {
+	}
+	if ip != nil {
 		assert.Contains(t, string(readBuffer), *ip)
+	}
+	if mac != nil {
 		assert.Contains(t, string(readBuffer), *mac)
-	} else {
-		t.Fatalf("Test bug: \"expectedOutput\" is nil AND \"ip\" or \"mac\" is too.")
 	}
 }
