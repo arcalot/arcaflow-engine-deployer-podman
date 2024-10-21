@@ -5,7 +5,7 @@ go 1.22.0
 require (
 	github.com/docker/docker v27.3.1+incompatible
 	github.com/docker/go-connections v0.5.0
-	github.com/opencontainers/selinux v1.11.0
+	github.com/opencontainers/selinux v1.11.1
 	go.arcalot.io/assert v1.8.0
 	go.arcalot.io/lang v1.1.0
 	go.arcalot.io/log/v2 v2.2.0
