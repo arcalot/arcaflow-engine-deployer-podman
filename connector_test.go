@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"go.arcalot.io/assert"
-	log "go.arcalot.io/log/v2"
+	"go.arcalot.io/log/v2"
 	"go.flow.arcalot.io/deployer"
 	"go.flow.arcalot.io/podmandeployer/tests"
 )
@@ -577,7 +577,14 @@ func readOutputUntil(t *testing.T, plugin io.Reader, lookForOutput string) []byt
 	return readBuffer[:n]
 }
 
-func testNetworking(t *testing.T, podmanNetworking string, containerTest string, expectedOutput *string, ip *string, mac *string) {
+func testNetworking(
+	t *testing.T,
+	podmanNetworking string,
+	containerTest string,
+	expectedOutput *string,
+	ip *string,
+	mac *string,
+) {
 	logger := log.NewTestLogger(t)
 	assert.NoErrorR[string](t)(exec.LookPath("ifconfig"))
 
@@ -611,10 +618,13 @@ func testNetworking(t *testing.T, podmanNetworking string, containerTest string,
 	// assert the container input is not empty
 	assert.Equals(t, len(readBuffer) > 0, true)
 
-	if ip == nil && mac == nil && expectedOutput != nil {
+	if expectedOutput != nil {
 		assert.Contains(t, string(readBuffer), *expectedOutput)
-	} else {
+	}
+	if ip != nil {
 		assert.Contains(t, string(readBuffer), *ip)
+	}
+	if mac != nil {
 		assert.Contains(t, string(readBuffer), *mac)
 	}
 }
