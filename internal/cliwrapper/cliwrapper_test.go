@@ -23,7 +23,7 @@ func podmanImageExists(t *testing.T, connectionName *string) {
 
 	cmd := exec.Command(tests.GetPodmanPath(), "pull", tests.TestImage) //nolint:gosec  // Command line is trusted
 	if err := cmd.Run(); err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 
 	// check if the expected image actually exists
