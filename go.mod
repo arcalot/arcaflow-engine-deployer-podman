@@ -12,7 +12,7 @@ require (
 	go.arcalot.io/lang v1.1.0
 	go.arcalot.io/log/v2 v2.2.0
 	go.flow.arcalot.io/deployer v0.6.1
-	go.flow.arcalot.io/pluginsdk v0.14.1
+	go.flow.arcalot.io/pluginsdk v0.14.2
 )
 
 require (
