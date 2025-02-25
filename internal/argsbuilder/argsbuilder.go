@@ -1,6 +1,7 @@
 package argsbuilder
 
 import (
+	"strconv"
 	"strings"
 )
 
@@ -50,6 +51,13 @@ func (a *argsBuilder) SetNetworkMode(networkMode string) ArgsBuilder {
 func (a *argsBuilder) SetPrivileged(privileged bool) ArgsBuilder {
 	if privileged {
 		*a.commandArgs = append(*a.commandArgs, "--privileged")
+	}
+	return a
+}
+
+func (a *argsBuilder) SetReadOnlyRoot(readOnlyRootfs *bool) ArgsBuilder {
+	if readOnlyRootfs != nil {
+		*a.commandArgs = append(*a.commandArgs, "--read-only="+strconv.FormatBool(*readOnlyRootfs))
 	}
 	return a
 }
