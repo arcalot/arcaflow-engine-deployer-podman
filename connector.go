@@ -48,7 +48,8 @@ func (c *Connector) Deploy(ctx context.Context, image string) (deployer.Plugin, 
 		SetVolumes(hostConfig.Binds).
 		SetCgroupNs(string(hostConfig.CgroupnsMode)).
 		SetNetworkMode(string(hostConfig.NetworkMode)).
-		SetPrivileged(hostConfig.Privileged)
+		SetPrivileged(hostConfig.Privileged).
+		SetReadOnlyRoot(&hostConfig.ReadonlyRootfs)
 
 	stdin, stdout, err := c.podmanCliWrapper.Deploy(image, commandArgs, []string{"--atp"})
 
