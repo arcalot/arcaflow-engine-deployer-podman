@@ -117,7 +117,7 @@ func (p *cliWrapper) Clean(containerName string) error {
 }
 
 func (p *cliWrapper) getPodmanCmd(cmdArgs ...string) *exec.Cmd {
-	var commandArgs []string
+	commandArgs := make([]string, 0, len(p.connectionName)+len(cmdArgs))
 	commandArgs = append(commandArgs, p.connectionName...)
 	commandArgs = append(commandArgs, cmdArgs...)
 	return exec.Command(p.podmanFullPath, commandArgs...) //#nosec G204 -- command line is internally generated

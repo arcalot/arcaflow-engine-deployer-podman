@@ -14,7 +14,7 @@ import (
 )
 
 // TestImage repository manifest must include an image built for
-// platform linux/arm64
+// platform linux/arm64.
 const TestImageMultiPlatform = "quay.io/arcalot/arcaflow-plugin-baseimage-python-osbase:latest"
 const TestImage = "quay.io/podman/hello:latest"
 const TestImageNoTag = "quay.io/podman/hello"
@@ -60,11 +60,11 @@ func InspectImage(logger log.Logger, image string) *BasicInspection {
 	return &objects[0]
 }
 
-// GetCommmandCgroupNs detects the user's cgroup namespace
+// GetCommmandCgroupNs detects the user's cgroup namespace.
 func GetCommmandCgroupNs(logger log.Logger, command string, args []string) string {
 	// determine pid of a process executed by this user
 	var pid int
-	cmd1 := exec.Command(command, args...)
+	cmd1 := exec.Command(command, args...) //nolint:gosec // Test helper requires variable command execution.
 	if err := cmd1.Start(); err != nil {
 		logger.Errorf(err.Error())
 	}
@@ -95,7 +95,7 @@ func GetCommmandCgroupNs(logger log.Logger, command string, args []string) strin
 	return userCgroupNs
 }
 
-// GetPodmanCgroupNs  detects the running container cgroup namespace
+// GetPodmanCgroupNs detects the running container cgroup namespace.
 func GetPodmanCgroupNs(logger log.Logger, podmanPath string, containerName string) string {
 	var stdout bytes.Buffer
 	cmd := exec.Command( //nolint:gosec
