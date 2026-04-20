@@ -5,7 +5,7 @@ go 1.25.0
 require (
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/docker/go-connections v0.7.0
-	github.com/opencontainers/selinux v1.11.1
+	github.com/opencontainers/selinux v1.13.1
 	go.arcalot.io/assert v1.9.0
 	go.arcalot.io/lang v1.2.0
 	go.arcalot.io/log/v2 v2.3.1
@@ -14,6 +14,7 @@ require (
 )
 
 require (
+	github.com/cyphar/filepath-securejoin v0.5.1 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
