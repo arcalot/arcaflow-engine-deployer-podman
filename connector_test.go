@@ -1,4 +1,4 @@
-package podman
+package podman //nolint:testpackage // Tests access unexported identifiers.
 
 import (
 	"bytes"

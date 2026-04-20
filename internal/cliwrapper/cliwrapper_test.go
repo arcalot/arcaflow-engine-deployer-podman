@@ -1,4 +1,4 @@
-package cliwrapper
+package cliwrapper_test
 
 import (
 	"fmt"
@@ -10,6 +10,7 @@ import (
 	log "go.arcalot.io/log/v2"
 
 	"go.arcalot.io/assert"
+	"go.flow.arcalot.io/podmandeployer/internal/cliwrapper"
 	"go.flow.arcalot.io/podmandeployer/tests"
 )
 
@@ -17,7 +18,7 @@ func podmanImageExists(t *testing.T, connectionName *string) {
 	logger := log.NewTestLogger(t)
 	tests.RemoveImage(logger, tests.TestImage)
 
-	podman := NewCliWrapper(tests.GetPodmanPath(), logger, connectionName)
+	podman := cliwrapper.NewCliWrapper(tests.GetPodmanPath(), logger, connectionName)
 
 	assert.NotNil(t, tests.GetPodmanPath())
 
@@ -135,7 +136,7 @@ func TestPodman_PullImage(t *testing.T) {
 	logger := log.NewTestLogger(t)
 	tests.RemoveImage(logger, tests.TestImageMultiPlatform)
 
-	podman := NewCliWrapper(tests.GetPodmanPath(), logger, nil)
+	podman := cliwrapper.NewCliWrapper(tests.GetPodmanPath(), logger, nil)
 	assert.NotNil(t, tests.GetPodmanPath())
 
 	// pull without platform
