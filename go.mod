@@ -14,7 +14,8 @@ require (
 )
 
 require (
-	github.com/cyphar/filepath-securejoin v0.5.1 // indirect
+	cyphar.com/go-pathrs v0.2.1 // indirect
+	github.com/cyphar/filepath-securejoin v0.6.1 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
